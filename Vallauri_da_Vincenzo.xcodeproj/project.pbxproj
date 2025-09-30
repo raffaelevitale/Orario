@@ -470,7 +470,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "raffaele.Vallauri-da-Vincenzo.ScheduleWidget";
+				PRODUCT_BUNDLE_IDENTIFIER = "raffaele.Vallauri-Orario.ScheduleWidget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -501,7 +501,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "raffaele.Vallauri-da-Vincenzo.ScheduleWidget";
+				PRODUCT_BUNDLE_IDENTIFIER = "raffaele.Vallauri-Orario.ScheduleWidget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

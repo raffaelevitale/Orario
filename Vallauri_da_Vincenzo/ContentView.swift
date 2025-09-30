@@ -12,6 +12,18 @@ struct ContentView: View {
                     Text("Orario")
                 }
             
+            WeeklyPlannerView()
+                .tabItem {
+                    Image(systemName: "calendar.badge.plus")
+                    Text("Planner")
+                }
+            
+            StudyTimerView()
+                .tabItem {
+                    Image(systemName: "timer")
+                    Text("Timer")
+                }
+            
             GradesView()
                 .tabItem {
                     Image(systemName: "chart.bar.doc.horizontal")

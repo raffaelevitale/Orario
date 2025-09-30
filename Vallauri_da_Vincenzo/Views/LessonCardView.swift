@@ -4,10 +4,23 @@
 //
 
 import SwiftUI
+import Combine
 
 struct LessonCardView: View {
     let lesson: Lesson
+    @EnvironmentObject var dataManager: DataManager
     @State private var isPressed = false
+    @State private var currentTime = Date()
+    
+    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    
+    private var isCurrentLesson: Bool {
+        dataManager.isCurrentLesson(lesson)
+    }
+    
+    private var isNextLesson: Bool {
+        dataManager.isNextLesson(lesson)
+    }
 
     var body: some View {
         ZStack {
@@ -29,25 +42,72 @@ struct LessonCardView: View {
                     }
                     .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 3)
             } else {
-                // Lesson card style
+                // Lesson card style with current lesson highlighting
                 RoundedRectangle(cornerRadius: 25)
                     .fill(.ultraThinMaterial)
                     .overlay {
                         RoundedRectangle(cornerRadius: 25)
                             .stroke(
                                 LinearGradient(
-                                    colors: [Color(hex: lesson.color).opacity(0.6), .clear],
+                                    colors: isCurrentLesson ? 
+                                        [Color(hex: lesson.color), Color(hex: lesson.color).opacity(0.3)] :
+                                        [Color(hex: lesson.color).opacity(0.6), .clear],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 2
+                                lineWidth: isCurrentLesson ? 3 : 2
                             )
                     }
-                    .shadow(color: Color(hex: lesson.color).opacity(0.3), radius: 10, x: 0, y: 5)
+                    .shadow(
+                        color: isCurrentLesson ? 
+                            Color(hex: lesson.color).opacity(0.6) : 
+                            Color(hex: lesson.color).opacity(0.3), 
+                        radius: isCurrentLesson ? 15 : 10, 
+                        x: 0, 
+                        y: isCurrentLesson ? 8 : 5
+                    )
+                    .overlay {
+                        // Pulsing effect for current lesson
+                        if isCurrentLesson {
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(Color(hex: lesson.color), lineWidth: 2)
+                                .opacity(0.8)
+                                .scaleEffect(1.02)
+                                .animation(
+                                    .easeInOut(duration: 2)
+                                    .repeatForever(autoreverses: true),
+                                    value: currentTime
+                                )
+                        }
+                        
+                        // Next lesson indicator
+                        if isNextLesson && !isCurrentLesson {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "clock.badge.checkmark")
+                                            .font(.caption)
+                                        Text("Prossima")
+                                            .font(.caption2)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(Color(hex: lesson.color))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color(hex: lesson.color).opacity(0.2))
+                                    .clipShape(Capsule())
+                                    .padding(.top, 12)
+                                    .padding(.trailing, 16)
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
             }
 
             HStack {
-                // Left accent bar (different for breaks)
+                // Left accent bar (different for breaks and current lesson)
                 if lesson.subject == "Intervallo" {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(.gray.opacity(0.6))
@@ -55,11 +115,12 @@ struct LessonCardView: View {
                 } else {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color(hex: lesson.color))
-                        .frame(width: 6)
+                        .frame(width: isCurrentLesson ? 8 : 6)
+                        .animation(.easeInOut(duration: 0.3), value: isCurrentLesson)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    // Subject and time
+                    // Subject and time with current lesson indicator
                     HStack {
                         if lesson.subject == "Intervallo" {
                             HStack(spacing: 6) {
@@ -72,26 +133,46 @@ struct LessonCardView: View {
                                     .foregroundColor(.gray)
                             }
                         } else {
-                            Text(lesson.subject)
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .lineLimit(2)
+                            HStack(spacing: 8) {
+                                if isCurrentLesson {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.title3)
+                                        .foregroundColor(Color(hex: lesson.color))
+                                        .scaleEffect(1.1)
+                                }
+                                
+                                Text(lesson.subject)
+                                    .font(.headline)
+                                    .fontWeight(isCurrentLesson ? .bold : .semibold)
+                                    .foregroundColor(.white)
+                                    .lineLimit(2)
+                            }
                         }
 
                         Spacer()
 
                         HStack(spacing: 4) {
-                            Image(systemName: "clock")
+                            Image(systemName: isCurrentLesson ? "clock.fill" : "clock")
                                 .font(.caption)
                             Text("\(lesson.startTime) - \(lesson.endTime)")
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
-                        .foregroundColor(lesson.subject == "Intervallo" ? .gray : .white.opacity(0.8))
+                        .foregroundColor(
+                            lesson.subject == "Intervallo" ? 
+                                .gray : 
+                                (isCurrentLesson ? Color(hex: lesson.color) : .white.opacity(0.8))
+                        )
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(lesson.subject == "Intervallo" ? Color.gray.opacity(0.2) : Color.white.opacity(0.1))
+                        .background(
+                            lesson.subject == "Intervallo" ? 
+                                Color.gray.opacity(0.2) : 
+                                (isCurrentLesson ? 
+                                    Color(hex: lesson.color).opacity(0.2) : 
+                                    Color.white.opacity(0.1)
+                                )
+                        )
                         .clipShape(Capsule())
                     }
 
@@ -117,7 +198,7 @@ struct LessonCardView: View {
                     }
                     .foregroundColor(lesson.subject == "Intervallo" ? .gray.opacity(0.8) : .white.opacity(0.9))
 
-                    // Duration badge and break activities
+                    // Duration badge and break activities with current lesson progress
                     HStack {
                         if lesson.subject == "Intervallo" {
                             HStack(spacing: 4) {
@@ -128,6 +209,25 @@ struct LessonCardView: View {
                                     .fontWeight(.medium)
                             }
                             .foregroundColor(.gray.opacity(0.7))
+                        } else if isCurrentLesson {
+                            HStack(spacing: 6) {
+                                Image(systemName: "waveform")
+                                    .font(.caption2)
+                                    .foregroundColor(Color(hex: lesson.color))
+                                    .opacity(0.8)
+                                Text("In corso")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(Color(hex: lesson.color))
+                                
+                                // Progress indicator
+                                if let progress = getLessonProgress() {
+                                    ProgressView(value: progress)
+                                        .progressViewStyle(LinearProgressViewStyle(tint: Color(hex: lesson.color)))
+                                        .frame(width: 40, height: 4)
+                                        .scaleEffect(y: 1.5)
+                                }
+                            }
                         }
                         
                         Spacer()
@@ -135,10 +235,21 @@ struct LessonCardView: View {
                         Text("\(lesson.duration) min")
                             .font(.caption2)
                             .fontWeight(.semibold)
-                            .foregroundColor(lesson.subject == "Intervallo" ? .gray : .white)
+                            .foregroundColor(
+                                lesson.subject == "Intervallo" ? 
+                                    .gray : 
+                                    (isCurrentLesson ? Color(hex: lesson.color) : .white)
+                            )
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(lesson.subject == "Intervallo" ? Color.gray.opacity(0.3) : Color(hex: lesson.color).opacity(0.8))
+                            .background(
+                                lesson.subject == "Intervallo" ? 
+                                    Color.gray.opacity(0.3) : 
+                                    (isCurrentLesson ? 
+                                        Color(hex: lesson.color).opacity(0.3) : 
+                                        Color(hex: lesson.color).opacity(0.8)
+                                    )
+                            )
                             .clipShape(Capsule())
                     }
                 }
@@ -148,6 +259,9 @@ struct LessonCardView: View {
         }
         .scaleEffect(isPressed ? 0.95 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
         .onTapGesture {
             withAnimation {
                 isPressed = true
@@ -168,6 +282,32 @@ struct LessonCardView: View {
                 print("Lesson tapped: \(lesson.subject)")
             }
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func getLessonProgress() -> Double? {
+        guard isCurrentLesson else { return nil }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        
+        guard let startMinutes = timeToMinutes(lesson.startTime),
+              let endMinutes = timeToMinutes(lesson.endTime) else { return nil }
+        
+        let totalDuration = Double(endMinutes - startMinutes)
+        let elapsed = Double(currentMinutes - startMinutes)
+        
+        return min(max(elapsed / totalDuration, 0), 1)
+    }
+    
+    private func timeToMinutes(_ time: String) -> Int? {
+        let components = time.components(separatedBy: ":")
+        guard components.count == 2,
+              let hours = Int(components[0]),
+              let minutes = Int(components[1]) else { return nil }
+        return hours * 60 + minutes
     }
 }
 
@@ -207,7 +347,7 @@ extension Color {
         // Preview with break
         LessonCardView(lesson: Lesson.breaks[0])
         
-        // Another lesson
+                // Another lesson
         if Lesson.sampleData.count > 1 {
             LessonCardView(lesson: Lesson.sampleData[1])
         }

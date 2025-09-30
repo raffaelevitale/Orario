@@ -483,4 +483,52 @@ class DataManager: ObservableObject {
         let dayOfWeek = today == 1 ? 7 : today - 1
         return getLessonsForDay(dayOfWeek)
     }
+    
+    // MARK: - Current Lesson Detection
+    
+    func getCurrentLesson() -> Lesson? {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        let currentWeekday = calendar.component(.weekday, from: now)
+        let currentDayOfWeek = currentWeekday == 1 ? 7 : currentWeekday - 1
+        
+        let todayLessons = lessons.filter { $0.dayOfWeek == currentDayOfWeek }
+        
+        for lesson in todayLessons {
+            if let startMinutes = timeToMinutes(lesson.startTime),
+               let endMinutes = timeToMinutes(lesson.endTime),
+               currentMinutes >= startMinutes && currentMinutes < endMinutes {
+                return lesson
+            }
+        }
+        return nil
+    }
+    
+    func getNextLesson() -> Lesson? {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        let currentWeekday = calendar.component(.weekday, from: now)
+        let currentDayOfWeek = currentWeekday == 1 ? 7 : currentWeekday - 1
+        
+        let todayLessons = lessons.filter { $0.dayOfWeek == currentDayOfWeek }
+            .sorted { $0.startTime < $1.startTime }
+        
+        for lesson in todayLessons {
+            if let startMinutes = timeToMinutes(lesson.startTime),
+               currentMinutes < startMinutes {
+                return lesson
+            }
+        }
+        return nil
+    }
+    
+    func isCurrentLesson(_ lesson: Lesson) -> Bool {
+        return getCurrentLesson()?.id == lesson.id
+    }
+    
+    func isNextLesson(_ lesson: Lesson) -> Bool {
+        return getNextLesson()?.id == lesson.id
+    }
 }
