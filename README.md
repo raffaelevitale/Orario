@@ -1,6 +1,6 @@
-# Orario Vallauri - School Schedule App
+# School Schedule App
 
-App iOS con widget per iPhone che mostra l'orario scolastico, notifiche e voti dell'Istituto Vallauri.
+App iOS con widget per iPhone che mostra l'orario scolastico, notifiche e voti.
 
 ## 🏗️ Architettura
 
@@ -11,7 +11,7 @@ App iOS con widget per iPhone che mostra l'orario scolastico, notifiche e voti d
 
 ### Condivisione dati:
 
-- **App Group**: `group.vallauri.schedule`
+- **App Group**: `group.schedule.app`
 - **Shared UserDefaults**: Chiave `SavedLessons` per sincronizzazione
 - **WidgetKit**: Timeline automatiche per aggiornamenti
 
@@ -41,7 +41,7 @@ App iOS con widget per iPhone che mostra l'orario scolastico, notifiche e voti d
 
 ### Configurazione:
 
-1. **App Groups**: Configurare `group.vallauri.schedule` per tutti i target
+1. **App Groups**: Configurare `group.schedule.app` per tutti i target
 2. **Entitlements**: Verificare che tutti i target abbiano l'App Group
 3. **Certificates**: Assicurarsi che i profili di provisioning supportino App Groups
 
@@ -72,7 +72,7 @@ xcodebuild -project Vallauri_da_Vincenzo.xcodeproj -scheme watch_orarioExtension
 
 ### Test widget iOS:
 
-1. Aggiungere widget "Orario Vallauri" alla home screen
+1. Aggiungere widget "School Schedule" alla home screen
 2. Verificare che mostri prossima lezione
 3. Cambiare orario di sistema per testare transizioni
 4. Verificare aggiornamento widget quando app cambia dati
