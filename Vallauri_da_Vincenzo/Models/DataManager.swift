@@ -229,6 +229,18 @@ class DataManager: ObservableObject {
     
     // MARK: - Live Activities Management
     
+    // Avvia Live Activity per una lezione specifica (anche futura)
+    func startLiveActivity(for lesson: Lesson) {
+        // Non avviare per gli intervalli
+        guard lesson.subject != "Intervallo" else { return }
+        
+        // Prima termina tutte le live activities attive
+        endAllLiveActivities()
+        
+        // Avvia la nuova live activity
+        startLiveActivityForLesson(lesson)
+    }
+    
     func startLiveActivityForCurrentLesson() {
         // Per le Live Activities escludiamo gli intervalli
         let todayLessons = getTodaysLessons().filter { $0.subject != "Intervallo" }
@@ -393,9 +405,24 @@ class DataManager: ObservableObject {
               let endMinutes = timeToMinutes(lesson.endTime) else { return }
         
         let totalDuration = endMinutes - startMinutes
-        let elapsed = currentMinutes - startMinutes
-        let remaining = endMinutes - currentMinutes
-        let progress = Double(elapsed) / Double(totalDuration)
+        
+        // Calcola elapsed e remaining anche per lezioni future
+        var elapsed = currentMinutes - startMinutes
+        var remaining = endMinutes - currentMinutes
+        var progress = Double(elapsed) / Double(totalDuration)
+        
+        // Se la lezione non è ancora iniziata
+        if currentMinutes < startMinutes {
+            elapsed = 0
+            remaining = endMinutes - startMinutes
+            progress = 0.0
+        }
+        // Se la lezione è terminata
+        else if currentMinutes >= endMinutes {
+            elapsed = totalDuration
+            remaining = 0
+            progress = 1.0
+        }
         
         let attributes = ScheduleWidgetAttributes(
             lessonTitle: lesson.subject,
@@ -408,8 +435,8 @@ class DataManager: ObservableObject {
             classroom: lesson.classroom,
             startTime: lesson.startTime,
             endTime: lesson.endTime,
-            progress: progress,
-            remainingMinutes: remaining,
+            progress: max(0, min(1, progress)), // Assicura che sia tra 0 e 1
+            remainingMinutes: max(0, remaining),
             color: lesson.color
         )
         

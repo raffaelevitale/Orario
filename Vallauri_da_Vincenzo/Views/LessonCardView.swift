@@ -10,7 +10,9 @@ struct LessonCardView: View {
     let lesson: Lesson
     @EnvironmentObject var dataManager: DataManager
     @State private var isPressed = false
+    @State private var isPulsing = false
     @State private var currentTime = Date()
+    @State private var showLiveActivityAlert = false
     
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     
@@ -50,34 +52,37 @@ struct LessonCardView: View {
                             .stroke(
                                 LinearGradient(
                                     colors: isCurrentLesson ? 
-                                        [Color(hex: lesson.color), Color(hex: lesson.color).opacity(0.3)] :
+                                        [Color(hex: lesson.color), Color(hex: lesson.color).opacity(0.5)] :
                                         [Color(hex: lesson.color).opacity(0.6), .clear],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: isCurrentLesson ? 3 : 2
+                                lineWidth: isCurrentLesson ? 2.5 : 2
                             )
                     }
                     .shadow(
                         color: isCurrentLesson ? 
-                            Color(hex: lesson.color).opacity(0.6) : 
+                            Color(hex: lesson.color).opacity(0.5) : 
                             Color(hex: lesson.color).opacity(0.3), 
-                        radius: isCurrentLesson ? 15 : 10, 
+                        radius: isCurrentLesson ? 12 : 10, 
                         x: 0, 
-                        y: isCurrentLesson ? 8 : 5
+                        y: isCurrentLesson ? 6 : 5
                     )
                     .overlay {
-                        // Pulsing effect for current lesson
+                        // Pulsing effect for current lesson - animated
                         if isCurrentLesson {
                             RoundedRectangle(cornerRadius: 25)
                                 .stroke(Color(hex: lesson.color), lineWidth: 2)
-                                .opacity(0.8)
-                                .scaleEffect(1.02)
+                                .scaleEffect(isPulsing ? 1.03 : 1.0)
+                                .opacity(isPulsing ? 0.3 : 0.7)
                                 .animation(
-                                    .easeInOut(duration: 2)
-                                    .repeatForever(autoreverses: true),
-                                    value: currentTime
+                                    Animation.easeInOut(duration: 1.5)
+                                        .repeatForever(autoreverses: true),
+                                    value: isPulsing
                                 )
+                                .onAppear {
+                                    isPulsing = true
+                                }
                         }
                         
                         // Next lesson indicator
@@ -120,7 +125,7 @@ struct LessonCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    // Subject and time with current lesson indicator
+                    // Subject with current lesson indicator
                     HStack {
                         if lesson.subject == "Intervallo" {
                             HStack(spacing: 6) {
@@ -150,31 +155,32 @@ struct LessonCardView: View {
                         }
 
                         Spacer()
-
-                        HStack(spacing: 4) {
-                            Image(systemName: isCurrentLesson ? "clock.fill" : "clock")
-                                .font(.caption)
-                            Text("\(lesson.startTime) - \(lesson.endTime)")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(
-                            lesson.subject == "Intervallo" ? 
-                                .gray : 
-                                (isCurrentLesson ? Color(hex: lesson.color) : .white.opacity(0.8))
-                        )
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            lesson.subject == "Intervallo" ? 
-                                Color.gray.opacity(0.2) : 
-                                (isCurrentLesson ? 
-                                    Color(hex: lesson.color).opacity(0.2) : 
-                                    Color.white.opacity(0.1)
-                                )
-                        )
-                        .clipShape(Capsule())
                     }
+                    
+                    // Time - now in a separate row
+                    HStack(spacing: 4) {
+                        Image(systemName: isCurrentLesson ? "clock.fill" : "clock")
+                            .font(.caption)
+                        Text("\(lesson.startTime) - \(lesson.endTime)")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(
+                        lesson.subject == "Intervallo" ? 
+                            .gray : 
+                            (isCurrentLesson ? Color(hex: lesson.color) : .white.opacity(0.8))
+                    )
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        lesson.subject == "Intervallo" ? 
+                            Color.gray.opacity(0.2) : 
+                            (isCurrentLesson ? 
+                                Color(hex: lesson.color).opacity(0.2) : 
+                                Color.white.opacity(0.1)
+                            )
+                    )
+                    .clipShape(Capsule())
 
                     // Teacher (only for lessons, not breaks)
                     if lesson.subject != "Intervallo" && !lesson.teacher.isEmpty {
@@ -220,12 +226,20 @@ struct LessonCardView: View {
                                     .fontWeight(.semibold)
                                     .foregroundColor(Color(hex: lesson.color))
                                 
-                                // Progress indicator
+                                // Progress indicator with percentage
                                 if let progress = getLessonProgress() {
-                                    ProgressView(value: progress)
-                                        .progressViewStyle(LinearProgressViewStyle(tint: Color(hex: lesson.color)))
-                                        .frame(width: 40, height: 4)
-                                        .scaleEffect(y: 1.5)
+                                    HStack(spacing: 4) {
+                                        ProgressView(value: progress)
+                                            .progressViewStyle(LinearProgressViewStyle(tint: Color(hex: lesson.color)))
+                                            .frame(width: 50, height: 4)
+                                            .scaleEffect(y: 1.5)
+                                        
+                                        Text("\(Int(progress * 100))%")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(Color(hex: lesson.color))
+                                            .monospacedDigit()
+                                    }
                                 }
                             }
                         }
@@ -278,10 +292,20 @@ struct LessonCardView: View {
                 // Maybe show break activities or timer
                 print("Break tapped: \(lesson.classroom)")
             } else {
-                // Show lesson details or set reminder
-                print("Lesson tapped: \(lesson.subject)")
+                // Avvia Live Activity per questa lezione (temporaneamente disabilitato per debug)
+                // dataManager.startLiveActivity(for: lesson)
+                // showLiveActivityAlert = true
+                print("Lesson tapped: \(lesson.subject) - Live Activity temporaneamente disabilitata")
             }
         }
+        // Alert temporaneamente commentato
+        /*
+        .alert("Live Activity Avviata", isPresented: $showLiveActivityAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("La Live Activity per \(lesson.subject) è ora attiva nella Dynamic Island e Lock Screen.")
+        }
+        */
     }
     
     // MARK: - Helper Methods
@@ -308,34 +332,6 @@ struct LessonCardView: View {
               let hours = Int(components[0]),
               let minutes = Int(components[1]) else { return nil }
         return hours * 60 + minutes
-    }
-}
-
-// Color extension per hex colors
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (1, 1, 1, 0)
-        }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }
 

@@ -18,12 +18,6 @@ struct ContentView: View {
                     Text("Planner")
                 }
             
-            StudyTimerView()
-                .tabItem {
-                    Image(systemName: "timer")
-                    Text("Timer")
-                }
-            
             GradesView()
                 .tabItem {
                     Image(systemName: "chart.bar.doc.horizontal")

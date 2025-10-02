@@ -142,9 +142,6 @@ class WeeklyPlannerManager: ObservableObject {
     
     init() {
         loadTasks()
-        if tasks.isEmpty {
-            loadSampleData()
-        }
     }
     
     // MARK: - Persistence
@@ -160,55 +157,6 @@ class WeeklyPlannerManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([PlannerTask].self, from: data) {
             tasks = decoded
         }
-    }
-    
-    private func loadSampleData() {
-        let calendar = Calendar.current
-        let today = Date()
-        
-        tasks = [
-            PlannerTask(
-                title: "Esercizi di matematica",
-                description: "Capitolo 5: Equazioni di secondo grado",
-                subject: "Matematica",
-                type: .homework,
-                priority: .medium,
-                dueDate: calendar.date(byAdding: .day, value: 1, to: today) ?? today,
-                estimatedDuration: 90,
-                tags: ["algebra", "equazioni"]
-            ),
-            PlannerTask(
-                title: "Studiare Rivoluzione Francese",
-                description: "Ripassare gli eventi principali e le cause",
-                subject: "Storia",
-                type: .study,
-                priority: .high,
-                dueDate: calendar.date(byAdding: .day, value: 3, to: today) ?? today,
-                estimatedDuration: 120,
-                tags: ["rivoluzione", "francia"]
-            ),
-            PlannerTask(
-                title: "Verifica di Inglese",
-                description: "Present Perfect e Past Simple",
-                subject: "Inglese",
-                type: .exam,
-                priority: .urgent,
-                dueDate: calendar.date(byAdding: .day, value: 2, to: today) ?? today,
-                estimatedDuration: 60,
-                tags: ["grammatica", "verbi"]
-            ),
-            PlannerTask(
-                title: "Progetto Informatica",
-                description: "Sviluppo app mobile con Swift",
-                subject: "Informatica",
-                type: .project,
-                priority: .high,
-                dueDate: calendar.date(byAdding: .day, value: 7, to: today) ?? today,
-                estimatedDuration: 240,
-                tags: ["swift", "ios", "app"]
-            )
-        ]
-        saveTasks()
     }
     
     // MARK: - Task Management

@@ -16,7 +16,6 @@ struct AddTaskView: View {
     @State private var selectedType = TaskType.homework
     @State private var selectedPriority = TaskPriority.medium
     @State private var dueDate = Date()
-    @State private var estimatedDuration = 60
     @State private var tags: [String] = []
     @State private var newTag = ""
     
@@ -135,32 +134,6 @@ struct AddTaskView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         
-                        // Estimated duration
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Tempo stimato: \\(estimatedDuration) minuti")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Slider(value: Binding(
-                                get: { Double(estimatedDuration) },
-                                set: { estimatedDuration = Int($0) }
-                            ), in: 15...240, step: 15) {
-                                Text("Durata")
-                            } minimumValueLabel: {
-                                Text("15m")
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
-                            } maximumValueLabel: {
-                                Text("4h")
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                            .tint(.white)
-                            .padding()
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        
                         // Tags section
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Tag")
@@ -201,20 +174,27 @@ struct AddTaskView: View {
             .navigationTitle("Nuovo Compito")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annulla") {
-                        dismiss()
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                            Text("Annulla")
+                        }
+                        .foregroundColor(.white)
                     }
-                    .foregroundColor(.white)
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Salva") {
-                        saveTask()
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: saveTask) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark")
+                            Text("Salva")
+                        }
+                        .foregroundColor(.white)
+                        .fontWeight(.semibold)
                     }
-                    .foregroundColor(.white)
-                    .fontWeight(.semibold)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || selectedSubject.isEmpty)
+                    .opacity((title.trimmingCharacters(in: .whitespaces).isEmpty || selectedSubject.isEmpty) ? 0.5 : 1.0)
                 }
             }
             .onAppear {
@@ -245,7 +225,7 @@ struct AddTaskView: View {
             type: selectedType,
             priority: selectedPriority,
             dueDate: dueDate,
-            estimatedDuration: estimatedDuration,
+            estimatedDuration: 60,
             tags: tags
         )
         

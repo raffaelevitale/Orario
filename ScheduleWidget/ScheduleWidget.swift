@@ -71,18 +71,9 @@ struct Provider: TimelineProvider {
                 continue
             }
 
-            // Lezione in corso
+            // Lezione in corso - restituiamo la lezione senza modifiche
             if currentTimeMinutes >= lessonStartMinutes && currentTimeMinutes < lessonEndMinutes {
-                return WidgetLesson(
-                    id: lesson.id,
-                    subject: "📚 " + lesson.subject,
-                    teacher: lesson.teacher,
-                    classroom: "🏛 " + lesson.classroom,
-                    dayOfWeek: lesson.dayOfWeek,
-                    startTime: lesson.startTime,
-                    endTime: lesson.endTime,
-                    color: lesson.color
-                )
+                return lesson
             }
         }
 
@@ -248,10 +239,10 @@ struct ScheduleWidgetEntryView: View {
     private var mainWidgetView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("📚 Prossima Lezione")
+                Text(isCurrentLesson ? "▶️ In Corso" : "📚 Prossima Lezione")
                     .font(.caption2)
                     .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isCurrentLesson ? Color(hex: entry.lesson.color) : .secondary)
                 Spacer()
                 Text(timeUntil)
                     .font(.caption2)
@@ -300,6 +291,23 @@ struct ScheduleWidgetEntryView: View {
             }
         }
         .padding()
+    }
+    
+    private var isCurrentLesson: Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentWeekday = calendar.component(.weekday, from: now)
+        let currentDayOfWeek = currentWeekday == 1 ? 7 : currentWeekday - 1
+        
+        guard entry.lesson.dayOfWeek == currentDayOfWeek else { return false }
+        
+        if let startMinutes = timeToMinutes(entry.lesson.startTime),
+           let endMinutes = timeToMinutes(entry.lesson.endTime) {
+            let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+            return currentMinutes >= startMinutes && currentMinutes < endMinutes
+        }
+        
+        return false
     }
     
     private var accessoryRectangularView: some View {

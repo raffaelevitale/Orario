@@ -6,6 +6,7 @@ struct SchoolScheduleView: View {
     @State private var selectedDay = SchoolScheduleView.dayIndexForToday()
     @State private var scrollOffset: CGFloat = 0
     @State private var currentDate = Date()
+    @State private var scrollProxy: ScrollViewProxy?
 
     private let days = [
         (1, "Lun"), (2, "Mar"), (3, "Mer"), (4, "Gio"), (5, "Ven")
@@ -61,8 +62,8 @@ struct SchoolScheduleView: View {
                     lessonsView
                 }
             }
-            .navigationTitle(currentDate.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "it_IT"))).capitalized)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(.dark)
             .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
                 // Aggiorna la data ogni minuto per cambiare il titolo a mezzanotte
@@ -83,39 +84,78 @@ struct SchoolScheduleView: View {
                     .disabled(selectedDay == SchoolScheduleView.dayIndexForToday())
                 }
                 
+                ToolbarItem(placement: .principal) {
+                    Button(action: {
+                        if let currentLesson = dataManager.getCurrentLesson() {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                scrollToCurrentLesson()
+                            }
+                        }
+                    }) {
+                        VStack(spacing: 2) {
+                            Text("Orario Scolastico")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            if let currentLesson = dataManager.getCurrentLesson() {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.caption2)
+                                    Text("\(currentLesson.subject) • \(currentLesson.endTime)")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                }
+                                .foregroundColor(Color(hex: currentLesson.color))
+                            } else {
+                                VStack(spacing: 1) {
+                                    Text(currentDate.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "it_IT"))).capitalized)
+                                        .font(.caption2)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white.opacity(0.6))
+                                    Text(currentDate.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "it_IT"))))
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button("🔔 Programma Notifiche") {
-                            programmaNotifiche()
-                        }
-                        
-                        Button("🧪 Test Notifica Lezione") {
-                            if let firstLesson = dataManager.lessons.first(where: { $0.subject != "Intervallo" }) {
-                                NotificationManager.shared.sendTestNotification(for: firstLesson)
+                        Section("Notifiche") {
+                            Button(action: { programmaNotifiche() }) {
+                                Label("Programma Notifiche", systemImage: "bell.badge")
+                            }
+                            
+                            Button(action: { NotificationManager.shared.clearTestNotifications() }) {
+                                Label("Cancella Notifiche", systemImage: "bell.slash")
                             }
                         }
                         
-                        Button("⏰ Test Notifica Intervallo") {
-                            if let firstBreak = dataManager.lessons.first(where: { $0.subject == "Intervallo" }) {
-                                NotificationManager.shared.sendTestNotification(for: firstBreak)
+                        Section("Widget & Live Activity") {
+                            Button(action: { dataManager.checkAndManageLiveActivities() }) {
+                                Label("Gestisci Live Activity", systemImage: "square.stack.3d.up")
+                            }
+                            
+                            Button(action: { dataManager.forceWidgetUpdate() }) {
+                                Label("Aggiorna Widget", systemImage: "arrow.clockwise")
                             }
                         }
                         
-                        Divider()
-                        
-                        Button("📱 Gestisci Live Activity") {
-                            dataManager.checkAndManageLiveActivities()
-                        }
-                        
-                        Button("🔄 Aggiorna Widget") {
-                            dataManager.forceWidgetUpdate()
-                        }
-                        
-                        Button("🗑️ Cancella Notifiche Test") {
-                            NotificationManager.shared.clearTestNotifications()
+                        Section("Debug") {
+                            Button(action: {
+                                if let firstLesson = dataManager.lessons.first(where: { $0.subject != "Intervallo" }) {
+                                    NotificationManager.shared.sendTestNotification(for: firstLesson)
+                                }
+                            }) {
+                                Label("Test Notifica Lezione", systemImage: "testtube.2")
+                            }
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "gearshape")
                             .font(.title2)
                             .foregroundStyle(.white)
                     }
@@ -123,6 +163,7 @@ struct SchoolScheduleView: View {
             }
         }
     }
+
     
     private var daySelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -183,7 +224,7 @@ struct SchoolScheduleView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 100)
+                .padding(.bottom, 20)
             }
             .scrollIndicators(.hidden)
             .coordinateSpace(name: "LESSONS_SCROLL")
@@ -195,6 +236,27 @@ struct SchoolScheduleView: View {
                 withAnimation(.easeOut(duration: 0.5)) {
                     proxy.scrollTo("top", anchor: .top)
                 }
+            }
+            .onAppear {
+                scrollProxy = proxy
+            }
+        }
+    }
+    
+    private func scrollToCurrentLesson() {
+        guard let currentLesson = dataManager.getCurrentLesson(),
+              let proxy = scrollProxy else { return }
+        
+        // Cambia al giorno corrente se necessario
+        let todayIndex = SchoolScheduleView.dayIndexForToday()
+        if selectedDay != todayIndex {
+            selectedDay = todayIndex
+        }
+        
+        // Aspetta un momento per il cambio di giorno e poi scrolla
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
+                proxy.scrollTo(currentLesson.id, anchor: .center)
             }
         }
     }
@@ -247,6 +309,33 @@ struct SchoolScheduleView: View {
                 print("❌ Permessi negati!")
             }
         }
+    }
+}
+
+// Color extension per hex colors (se non già presente)
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
 

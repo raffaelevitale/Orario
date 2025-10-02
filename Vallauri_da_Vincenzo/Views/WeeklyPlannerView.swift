@@ -56,9 +56,16 @@ struct WeeklyPlannerView: View {
                     }
                 }
             }
-            .navigationTitle("Planner")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Planner")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddTask = true }) {
                         Image(systemName: "plus.circle.fill")
@@ -109,43 +116,34 @@ struct WeeklyPlannerView: View {
             
             // Stats cards
             let stats = plannerManager.getTasksCountForWeek(plannerManager.selectedWeekOffset)
-            let estimatedTime = plannerManager.getEstimatedTimeForWeek(plannerManager.selectedWeekOffset)
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 15) {
-                    StatCard(
-                        title: "Totali", 
-                        value: "\(stats.total)", 
-                        color: .blue,
-                        icon: "doc.text"
-                    )
-                    StatCard(
-                        title: "Completati", 
-                        value: "\(stats.completed)", 
-                        color: .green,
-                        icon: "checkmark.circle"
-                    )
-                    StatCard(
-                        title: "In attesa", 
-                        value: "\(stats.pending)", 
-                        color: .orange,
-                        icon: "clock"
-                    )
-                    StatCard(
-                        title: "In ritardo", 
-                        value: "\(stats.overdue)", 
-                        color: .red,
-                        icon: "exclamationmark.triangle"
-                    )
-                    StatCard(
-                        title: "Tempo stimato", 
-                        value: "\(estimatedTime / 60)h \(estimatedTime % 60)m", 
-                        color: .purple,
-                        icon: "timer"
-                    )
-                }
-                .padding(.horizontal)
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Totali", 
+                    value: "\(stats.total)", 
+                    color: .blue,
+                    icon: "doc.text"
+                )
+                StatCard(
+                    title: "Completati", 
+                    value: "\(stats.completed)", 
+                    color: .green,
+                    icon: "checkmark.circle"
+                )
+                StatCard(
+                    title: "In attesa", 
+                    value: "\(stats.pending)", 
+                    color: .orange,
+                    icon: "clock"
+                )
+                StatCard(
+                    title: "In ritardo", 
+                    value: "\(stats.overdue)", 
+                    color: .red,
+                    icon: "exclamationmark.triangle"
+                )
             }
+            .padding(.horizontal)
         }
         .padding(.vertical)
     }
@@ -205,7 +203,7 @@ struct WeeklyPlannerView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.bottom, 100)
+            .padding(.bottom, 20)
         }
     }
     
@@ -245,7 +243,7 @@ struct WeeklyPlannerView: View {
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 20)
                 }
             }
         }
@@ -309,7 +307,7 @@ struct WeeklyPlannerView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.bottom, 100)
+            .padding(.bottom, 20)
         }
     }
 }
@@ -323,27 +321,27 @@ struct StatCard: View {
     let icon: String
     
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.caption)
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-            }
-            .foregroundColor(color)
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundColor(color)
             
             Text(value)
-                .font(.headline)
+                .font(.subheadline)
                 .fontWeight(.bold)
                 .foregroundColor(.white)
+            
+            Text(title)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundColor(color.opacity(0.8))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .stroke(color.opacity(0.3), lineWidth: 1)
         }
     }
