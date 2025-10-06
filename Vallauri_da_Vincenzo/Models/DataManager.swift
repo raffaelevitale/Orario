@@ -194,35 +194,38 @@ class DataManager: ObservableObject {
     // MARK: - Notifications Management
     
     private func scheduleNotificationsIfNeeded() {
-        // Verifica se i permessi sono stati concessi
+        // Verifica se i permessi sono stati concessi e se le notifiche sono abilitate
         UNUserNotificationCenter.current().getNotificationSettings { settings in
-            if settings.authorizationStatus == .authorized {
+            if settings.authorizationStatus == .authorized && SettingsManager.shared.enableNotifications {
                 DispatchQueue.main.async {
-                    // Includi TUTTE le lezioni e gli intervalli
-                    print("🔔 Programmazione notifiche per \(self.lessons.count) lezioni e intervalli...")
+                    print("🔔 Programmazione notifiche basata sulle impostazioni utente...")
                     NotificationManager.shared.scheduleNotifications(for: self.lessons)
                 }
             } else {
-                print("⚠️ Permessi notifiche non concessi, non programmo le notifiche")
+                print("⚠️ Permessi notifiche non concessi o notifiche disabilitate")
             }
         }
     }
     
     // Metodo per riprogrammare le notifiche manualmente
     func rescheduleNotifications() {
+        guard SettingsManager.shared.enableNotifications else {
+            print("🔕 Notifiche disabilitate dalle impostazioni")
+            return
+        }
+        
         print("🔄 Riprogrammazione notifiche...")
-        // Programma notifiche per TUTTE le lezioni e intervalli
         NotificationManager.shared.scheduleNotifications(for: lessons)
     }
     
     // Richiedi permessi e programma notifiche
     func setupNotifications() {
         NotificationManager.shared.requestPermissions { [weak self] granted in
-            if granted {
+            if granted && SettingsManager.shared.enableNotifications {
                 self?.rescheduleNotifications()
                 print("✅ Notifiche programmate!")
             } else {
-                print("❌ Permessi negati!")
+                print("❌ Permessi negati o notifiche disabilitate!")
             }
         }
     }
@@ -277,8 +280,7 @@ class DataManager: ObservableObject {
                 do {
                     let activity = try Activity<ScheduleWidgetAttributes>.request(
                         attributes: attributes,
-                        contentState: contentState,
-                        pushType: nil
+                        content: .init(state: contentState, staleDate: nil)
                     )
                     print("✅ Live Activity avviata: \(activity.id)")
                 } catch {
@@ -321,7 +323,7 @@ class DataManager: ObservableObject {
                     )
                     
                     Task {
-                        await activity.update(using: contentState)
+                        await activity.update(.init(state: contentState, staleDate: nil))
                     }
                 }
             }
@@ -331,7 +333,7 @@ class DataManager: ObservableObject {
     func endLiveActivity() {
         for activity in Activity<ScheduleWidgetAttributes>.activities {
             Task {
-                await activity.end(dismissalPolicy: .immediate)
+                await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
     }
@@ -443,8 +445,7 @@ class DataManager: ObservableObject {
         do {
             let activity = try Activity<ScheduleWidgetAttributes>.request(
                 attributes: attributes,
-                contentState: contentState,
-                pushType: nil
+                content: .init(state: contentState, staleDate: nil)
             )
             print("✅ Live Activity avviata per: \(lesson.subject)")
         } catch {
@@ -489,7 +490,7 @@ class DataManager: ObservableObject {
     private func endAllLiveActivities() {
         Task {
             for activity in Activity<ScheduleWidgetAttributes>.activities {
-                await activity.end(dismissalPolicy: .immediate)
+                await activity.end(nil, dismissalPolicy: .immediate)
                 print("⏹ Live Activity terminata per: \(activity.attributes.lessonTitle)")
             }
         }
@@ -557,5 +558,31 @@ class DataManager: ObservableObject {
     
     func isNextLesson(_ lesson: Lesson) -> Bool {
         return getNextLesson()?.id == lesson.id
+    }
+    
+    // MARK: - Data Management
+    
+    func resetAllData() {
+        // Rimuovi tutti i voti
+        grades.removeAll()
+        saveGrades()
+        
+        // Reset alle lezioni di esempio
+        lessons = (Lesson.sampleData + Lesson.breaks).sorted { first, second in
+            if first.dayOfWeek == second.dayOfWeek {
+                return first.startTime < second.startTime
+            } else {
+                return first.dayOfWeek < second.dayOfWeek
+            }
+        }
+        saveLessons()
+        
+        // Cancella tutte le notifiche programmate
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        
+        // Rimuovi dati del planner se necessario
+        UserDefaults.standard.removeObject(forKey: "WeeklyPlannerTasks")
+        
+        print("✅ Tutti i dati sono stati ripristinati")
     }
 }
