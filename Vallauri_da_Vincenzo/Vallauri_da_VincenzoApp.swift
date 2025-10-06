@@ -84,6 +84,6 @@ struct Vallauri_da_Vincenzo: App {
             Lesson(subject: "Intervallo", teacher: "", classroom: "Corridoio / Bar", dayOfWeek: 4, startTime: "12:10", endTime: "12:20", color: "#bdbdbd")
         ]
 
-        let allLessons = lessons + breaks
+        // let allLessons = lessons + breaks // Non utilizzato per ora
     }
 }

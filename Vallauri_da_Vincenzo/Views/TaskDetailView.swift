@@ -51,7 +51,7 @@ struct TaskDetailView: View {
                                 }
                             }
                             
-                            // Type, Priority and Status indicators
+                            // Type and Status indicators
                             HStack(spacing: 12) {
                                 // Type
                                 Label(task.type.rawValue, systemImage: task.type.icon)
@@ -60,15 +60,6 @@ struct TaskDetailView: View {
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
                                     .background(task.type.color.opacity(0.2))
-                                    .clipShape(Capsule())
-                                
-                                // Priority
-                                Label(task.priority.rawValue, systemImage: task.priority.icon)
-                                    .font(.caption)
-                                    .foregroundColor(task.priority.color)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(task.priority.color.opacity(0.2))
                                     .clipShape(Capsule())
                                 
                                 // Status
@@ -334,7 +325,6 @@ struct EditTaskView: View {
     @State private var title: String = ""
     @State private var description: String = ""
     @State private var selectedType: TaskType = .homework
-    @State private var selectedPriority: TaskPriority = .medium
     @State private var dueDate: Date = Date()
     @State private var estimatedDuration: Int = 60
     
@@ -369,43 +359,23 @@ struct EditTaskView: View {
                                 .lineLimit(3...6)
                         }
                         
-                        HStack(spacing: 16) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Tipo")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                Picker("Tipo", selection: $selectedType) {
-                                    ForEach(TaskType.allCases, id: \.self) { type in
-                                        Label(type.rawValue, systemImage: type.icon)
-                                            .tag(type)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .tint(.white)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
+                        // Type selection (full width)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Tipo")
+                                .font(.headline)
+                                .foregroundColor(.white)
                             
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Priorità")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                Picker("Priorità", selection: $selectedPriority) {
-                                    ForEach(TaskPriority.allCases, id: \.self) { priority in
-                                        Label(priority.rawValue, systemImage: priority.icon)
-                                            .foregroundColor(priority.color)
-                                            .tag(priority)
-                                    }
+                            Picker("Tipo", selection: $selectedType) {
+                                ForEach(TaskType.allCases, id: \.self) { type in
+                                    Label(type.rawValue, systemImage: type.icon)
+                                        .tag(type)
                                 }
-                                .pickerStyle(.menu)
-                                .tint(.white)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
+                            .pickerStyle(.menu)
+                            .tint(.white)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
@@ -416,7 +386,7 @@ struct EditTaskView: View {
                             DatePicker(
                                 "Data di scadenza",
                                 selection: $dueDate,
-                                displayedComponents: [.date, .hourAndMinute]
+                                displayedComponents: [.date]
                             )
                             .datePickerStyle(.compact)
                             .tint(.white)
@@ -471,7 +441,6 @@ struct EditTaskView: View {
         title = task.title
         description = task.description
         selectedType = task.type
-        selectedPriority = task.priority
         dueDate = task.dueDate
         estimatedDuration = task.estimatedDuration
     }
@@ -480,7 +449,6 @@ struct EditTaskView: View {
         task.title = title.trimmingCharacters(in: .whitespaces)
         task.description = description.trimmingCharacters(in: .whitespaces)
         task.type = selectedType
-        task.priority = selectedPriority
         task.dueDate = dueDate
         task.estimatedDuration = estimatedDuration
         
@@ -496,7 +464,6 @@ struct EditTaskView: View {
             description: "Questa è una descrizione di esempio per il compito",
             subject: "Matematica",
             type: .homework,
-            priority: .high,
             dueDate: Date(),
             estimatedDuration: 90,
             tags: ["algebra", "equazioni"]

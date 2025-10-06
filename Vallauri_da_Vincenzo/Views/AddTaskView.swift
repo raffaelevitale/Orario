@@ -14,7 +14,6 @@ struct AddTaskView: View {
     @State private var description = ""
     @State private var selectedSubject = ""
     @State private var selectedType = TaskType.homework
-    @State private var selectedPriority = TaskPriority.medium
     @State private var dueDate = Date()
     @State private var tags: [String] = []
     @State private var newTag = ""
@@ -57,35 +56,17 @@ struct AddTaskView: View {
                                 .lineLimit(3...6)
                         }
                         
-                        // Subject selection
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Materia")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Picker("Materia", selection: $selectedSubject) {
-                                ForEach(availableSubjects, id: \.self) { subject in
-                                    Text(subject).tag(subject)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .tint(.white)
-                            .padding()
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        
-                        // Type and Priority
-                        HStack(spacing: 16) {
+                        // Subject and Type selection on same level
+                        HStack(spacing: 12) {
+                            // Subject selection
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Tipo")
+                                Text("Materia")
                                     .font(.headline)
                                     .foregroundColor(.white)
                                 
-                                Picker("Tipo", selection: $selectedType) {
-                                    ForEach(TaskType.allCases, id: \.self) { type in
-                                        Label(type.rawValue, systemImage: type.icon)
-                                            .tag(type)
+                                Picker("Materia", selection: $selectedSubject) {
+                                    ForEach(availableSubjects, id: \.self) { subject in
+                                        Text(subject).tag(subject)
                                     }
                                 }
                                 .pickerStyle(.menu)
@@ -95,16 +76,16 @@ struct AddTaskView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             
+                            // Type selection
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Priorità")
+                                Text("Tipo")
                                     .font(.headline)
                                     .foregroundColor(.white)
                                 
-                                Picker("Priorità", selection: $selectedPriority) {
-                                    ForEach(TaskPriority.allCases, id: \.self) { priority in
-                                        Label(priority.rawValue, systemImage: priority.icon)
-                                            .foregroundColor(priority.color)
-                                            .tag(priority)
+                                Picker("Tipo", selection: $selectedType) {
+                                    ForEach(TaskType.allCases, id: \.self) { type in
+                                        Label(type.rawValue, systemImage: type.icon)
+                                            .tag(type)
                                     }
                                 }
                                 .pickerStyle(.menu)
@@ -125,7 +106,7 @@ struct AddTaskView: View {
                                 "Data di scadenza",
                                 selection: $dueDate,
                                 in: Date()...,
-                                displayedComponents: [.date, .hourAndMinute]
+                                displayedComponents: [.date]
                             )
                             .datePickerStyle(.compact)
                             .tint(.white)
@@ -171,7 +152,7 @@ struct AddTaskView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Nuovo Compito")
+            .navigationTitle("Nuovo Evento")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -223,7 +204,7 @@ struct AddTaskView: View {
             description: description.trimmingCharacters(in: .whitespaces),
             subject: selectedSubject,
             type: selectedType,
-            priority: selectedPriority,
+            priority: .medium,
             dueDate: dueDate,
             estimatedDuration: 60,
             tags: tags

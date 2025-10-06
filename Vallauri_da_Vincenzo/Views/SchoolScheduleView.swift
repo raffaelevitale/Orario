@@ -3,6 +3,7 @@ import Combine
 
 struct SchoolScheduleView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var selectedDay = SchoolScheduleView.dayIndexForToday()
     @State private var scrollOffset: CGFloat = 0
     @State private var currentDate = Date()
@@ -11,6 +12,9 @@ struct SchoolScheduleView: View {
     private let days = [
         (1, "Lun"), (2, "Mar"), (3, "Mer"), (4, "Gio"), (5, "Ven")
     ]
+    
+    // Timer per aggiornare più frequentemente
+    private let timer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     private static func dayIndexForToday() -> Int {
         let weekday = Calendar.current.component(.weekday, from: Date())
@@ -46,9 +50,9 @@ struct SchoolScheduleView: View {
         NavigationView {
             ZStack {
                 LinearGradient(
-                    colors: [.black, .gray.opacity(0.8)],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: settingsManager.backgroundColor.colors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
 
@@ -65,12 +69,9 @@ struct SchoolScheduleView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(.dark)
-            .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
-                // Aggiorna la data ogni minuto per cambiare il titolo a mezzanotte
-                let newDate = Date()
-                if !Calendar.current.isDate(currentDate, inSameDayAs: newDate) {
-                    currentDate = newDate
-                }
+            .onReceive(timer) { _ in
+                // Aggiorna più frequentemente per la materia attuale
+                currentDate = Date()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -123,43 +124,7 @@ struct SchoolScheduleView: View {
                     .buttonStyle(.plain)
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Section("Notifiche") {
-                            Button(action: { programmaNotifiche() }) {
-                                Label("Programma Notifiche", systemImage: "bell.badge")
-                            }
-                            
-                            Button(action: { NotificationManager.shared.clearTestNotifications() }) {
-                                Label("Cancella Notifiche", systemImage: "bell.slash")
-                            }
-                        }
-                        
-                        Section("Widget & Live Activity") {
-                            Button(action: { dataManager.checkAndManageLiveActivities() }) {
-                                Label("Gestisci Live Activity", systemImage: "square.stack.3d.up")
-                            }
-                            
-                            Button(action: { dataManager.forceWidgetUpdate() }) {
-                                Label("Aggiorna Widget", systemImage: "arrow.clockwise")
-                            }
-                        }
-                        
-                        Section("Debug") {
-                            Button(action: {
-                                if let firstLesson = dataManager.lessons.first(where: { $0.subject != "Intervallo" }) {
-                                    NotificationManager.shared.sendTestNotification(for: firstLesson)
-                                }
-                            }) {
-                                Label("Test Notifica Lezione", systemImage: "testtube.2")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                    }
-                }
+
             }
         }
     }
@@ -298,17 +263,6 @@ struct SchoolScheduleView: View {
         }
 
         return calendar.date(byAdding: .day, value: dayNumber - 1, to: monday) ?? today
-    }
-    
-    private func programmaNotifiche() {
-        NotificationManager.shared.requestPermissions { granted in
-            if granted {
-                dataManager.rescheduleNotifications()
-                print("✅ Notifiche programmate!")
-            } else {
-                print("❌ Permessi negati!")
-            }
-        }
     }
 }
 

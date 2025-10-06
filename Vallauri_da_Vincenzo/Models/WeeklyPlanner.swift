@@ -69,7 +69,7 @@ enum TaskType: String, CaseIterable, Codable {
 }
 
 struct PlannerTask: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     var title: String
     var description: String
     var subject: String
@@ -92,6 +92,7 @@ struct PlannerTask: Identifiable, Codable {
         estimatedDuration: Int = 60,
         tags: [String] = []
     ) {
+        self.id = UUID()
         self.title = title
         self.description = description
         self.subject = subject

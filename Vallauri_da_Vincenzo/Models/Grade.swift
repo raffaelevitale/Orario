@@ -8,13 +8,23 @@
 import Foundation
 
 struct Grade: Identifiable, Codable, Equatable {
-    let id = UUID()
+    let id: UUID
     let subject: String
     let value: Double // Voto (es. 7.5, 8.0, ecc.)
     let date: Date
     let description: String // Tipo di verifica (es. "Verifica scritta", "Interrogazione", "Laboratorio")
     let teacher: String
     let color: String // Colore della materia (preso dalle lezioni)
+    
+    init(subject: String, value: Double, date: Date, description: String, teacher: String, color: String) {
+        self.id = UUID()
+        self.subject = subject
+        self.value = value
+        self.date = date
+        self.description = description
+        self.teacher = teacher
+        self.color = color
+    }
     
     // Computed property per formattare il voto
     var formattedValue: String {

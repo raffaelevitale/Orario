@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GradesView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var selectedView: GradeViewMode = .bySubject
     @State private var showingAddGrade = false
     @State private var scrollOffset: CGFloat = 0
@@ -56,14 +57,21 @@ struct GradesView: View {
     var body: some View {
         NavigationView {
             ZStack {
+                // Background uniforme come nelle altre sezioni
                 LinearGradient(
-                    colors: [Color.black, Color.purple.opacity(0.3)],
+                    colors: settingsManager.backgroundColor.colors,
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    // Header con titolo e pulsante
+                    headerView
+                        .scaleEffect(headerScale)
+                        .opacity(headerOpacity)
+                        .animation(.easeInOut(duration: 0.2), value: collapseProgress)
+                    
                     viewSelector
                         .scaleEffect(selectorScale)
                         .opacity(selectorOpacity)
@@ -72,22 +80,33 @@ struct GradesView: View {
                     content
                 }
             }
-            .navigationTitle("📊 Voti")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(.dark)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddGrade = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                    }
-                }
+        }
+    }
+    
+    // MARK: - Header View
+    private var headerView: some View {
+        HStack {
+            Text("📊 Voti")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Button(action: { showingAddGrade = true }) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
             }
-            .sheet(isPresented: $showingAddGrade) {
-                AddGradeView()
-                    .environmentObject(dataManager)
-            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 16)
+        .sheet(isPresented: $showingAddGrade) {
+            AddGradeView()
+                .environmentObject(dataManager)
         }
     }
     

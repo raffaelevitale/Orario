@@ -6,7 +6,7 @@
 import Foundation
 
 struct Lesson: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let subject: String
     let teacher: String
     let classroom: String
@@ -14,6 +14,17 @@ struct Lesson: Identifiable, Codable {
     let startTime: String // "07:50"
     let endTime: String // "08:50"
     let color: String // Hex color per la materia
+    
+    init(subject: String, teacher: String, classroom: String, dayOfWeek: Int, startTime: String, endTime: String, color: String) {
+        self.id = UUID()
+        self.subject = subject
+        self.teacher = teacher
+        self.classroom = classroom
+        self.dayOfWeek = dayOfWeek
+        self.startTime = startTime
+        self.endTime = endTime
+        self.color = color
+    }
 
     var dayName: String {
         switch dayOfWeek {

@@ -8,6 +8,7 @@ import SwiftUI
 struct WeeklyPlannerView: View {
     @StateObject private var plannerManager = WeeklyPlannerManager()
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var selectedDate = Date()
     @State private var showingAddTask = false
     @State private var showingTaskDetail: PlannerTask?
@@ -32,9 +33,9 @@ struct WeeklyPlannerView: View {
             ZStack {
                 // Background gradient
                 LinearGradient(
-                    colors: [.black, .gray.opacity(0.8)],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: settingsManager.backgroundColor.colors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 

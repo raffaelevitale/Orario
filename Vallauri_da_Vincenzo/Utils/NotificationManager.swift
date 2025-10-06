@@ -18,8 +18,16 @@ class NotificationManager {
                 // Rimuovi tutte le notifiche esistenti
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 
-                for lesson in lessons {
-                    self.scheduleWeeklyNotification(for: lesson)
+                // Programma i promemoria delle lezioni se abilitati
+                if SettingsManager.shared.enableLessonReminders {
+                    for lesson in lessons {
+                        self.scheduleWeeklyNotification(for: lesson)
+                    }
+                }
+                
+                // Programma anche la notifica quotidiana se abilitata
+                if SettingsManager.shared.enableDailyNotification {
+                    self.scheduleDailySchoolNotification(for: lessons)
                 }
             }
         }
@@ -84,6 +92,73 @@ class NotificationManager {
                 print("Notifica programmata per \(lesson.subject) - \(dateComponents.weekday!) alle \(notificationHour):\(String(format: "%02d", notificationMinute))")
             }
         }
+    }
+    
+    // MARK: - Daily School Notification
+    
+    func scheduleDailySchoolNotification(for lessons: [Lesson]) {
+        // Ottieni l'orario impostato dall'utente
+        let calendar = Calendar.current
+        let notificationTime = SettingsManager.shared.dailyNotificationTime
+        let hour = calendar.component(.hour, from: notificationTime)
+        let minute = calendar.component(.minute, from: notificationTime)
+        
+        // Programma notifiche per ogni giorno della settimana (Lunedì-Venerdì)
+        for dayOfWeek in 1...5 {
+            let todayLessons = lessons.filter { 
+                $0.dayOfWeek == dayOfWeek && $0.subject != "Intervallo" 
+            }.sorted { $0.startTime < $1.startTime }
+            
+            guard !todayLessons.isEmpty else { continue }
+            
+            let content = UNMutableNotificationContent()
+            content.title = "📚 Buona scuola!"
+            
+            // Crea l'elenco delle materie
+            let subjects = todayLessons.map { $0.subject }
+            let uniqueSubjects = Array(Set(subjects)).sorted()
+            
+            if uniqueSubjects.count == 1 {
+                content.body = "Oggi hai: \(uniqueSubjects[0]). Buona giornata! 🎓"
+            } else if uniqueSubjects.count <= 3 {
+                let subjectsList = uniqueSubjects.joined(separator: ", ")
+                content.body = "Oggi hai: \(subjectsList). Buona giornata! 🎓"
+            } else {
+                content.body = "Oggi hai \(uniqueSubjects.count) materie: \(uniqueSubjects.prefix(3).joined(separator: ", ")) e altre. Buona giornata! 🎓"
+            }
+            
+            content.sound = .default
+            content.badge = 1
+            
+            // Programma per l'orario impostato dall'utente
+            var dateComponents = DateComponents()
+            dateComponents.weekday = (dayOfWeek % 7) + 1 // Convert to Sunday=1 system
+            dateComponents.hour = hour
+            dateComponents.minute = minute
+            
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+            
+            let request = UNNotificationRequest(
+                identifier: "daily-school-\(dayOfWeek)",
+                content: content,
+                trigger: trigger
+            )
+            
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("Errore programmazione notifica quotidiana per giorno \(dayOfWeek): \(error)")
+                } else {
+                    let dayName = ["", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"][dayOfWeek]
+                    print("✅ Notifica quotidiana programmata per \(dayName) alle \(String(format: "%02d:%02d", hour, minute))")
+                }
+            }
+        }
+    }
+    
+    func cancelDailySchoolNotifications() {
+        let identifiers = (1...5).map { "daily-school-\($0)" }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        print("🗑️ Notifiche quotidiane cancellate")
     }
 
     func requestPermissions(completion: @escaping (Bool) -> Void = { _ in }) {
