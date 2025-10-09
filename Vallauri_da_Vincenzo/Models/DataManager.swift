@@ -3,7 +3,9 @@ import SwiftUI
 import Combine
 import UserNotifications
 import WidgetKit
+#if canImport(ActivityKit)
 import ActivityKit
+#endif
 
 // MARK: - Live Activity Attributes
 struct ScheduleWidgetAttributes: ActivityAttributes {
@@ -232,10 +234,29 @@ class DataManager: ObservableObject {
     
     // MARK: - Live Activities Management
     
+    // Controlla se Live Activities sono supportate
+    private var isLiveActivitySupported: Bool {
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *) {
+            return ActivityAuthorizationInfo().areActivitiesEnabled
+        }
+        #endif
+        return false
+    }
+    
     // Avvia Live Activity per una lezione specifica (anche futura)
     func startLiveActivity(for lesson: Lesson) {
         // Non avviare per gli intervalli
-        guard lesson.subject != "Intervallo" else { return }
+        guard lesson.subject != "Intervallo" else { 
+            print("⚠️ Non posso avviare Live Activity per gli intervalli")
+            return 
+        }
+        
+        // Controlla se Live Activities sono supportate
+        guard isLiveActivitySupported else {
+            print("⚠️ Live Activities non supportate su questo dispositivo/versione iOS")
+            return
+        }
         
         // Prima termina tutte le live activities attive
         endAllLiveActivities()
@@ -245,6 +266,12 @@ class DataManager: ObservableObject {
     }
     
     func startLiveActivityForCurrentLesson() {
+        // Controlla se Live Activities sono supportate
+        guard isLiveActivitySupported else {
+            print("⚠️ Live Activities non supportate su questo dispositivo/versione iOS")
+            return
+        }
+        
         // Per le Live Activities escludiamo gli intervalli
         let todayLessons = getTodaysLessons().filter { $0.subject != "Intervallo" }
         let calendar = Calendar.current
@@ -261,31 +288,35 @@ class DataManager: ObservableObject {
                 let remaining = endMinutes - currentMinutes
                 let progress = Double(elapsed) / Double(totalDuration)
                 
-                let attributes = ScheduleWidgetAttributes(
-                    lessonTitle: lesson.subject,
-                    totalDuration: totalDuration
-                )
-                
-                let contentState = ScheduleWidgetAttributes.ContentState(
-                    currentLesson: lesson.subject,
-                    teacher: lesson.teacher,
-                    classroom: lesson.classroom,
-                    startTime: lesson.startTime,
-                    endTime: lesson.endTime,
-                    progress: progress,
-                    remainingMinutes: remaining,
-                    color: lesson.color
-                )
-                
-                do {
-                    let activity = try Activity<ScheduleWidgetAttributes>.request(
-                        attributes: attributes,
-                        content: .init(state: contentState, staleDate: nil)
+                #if canImport(ActivityKit)
+                if #available(iOS 16.1, *) {
+                    let attributes = ScheduleWidgetAttributes(
+                        lessonTitle: lesson.subject,
+                        totalDuration: totalDuration
                     )
-                    print("✅ Live Activity avviata: \(activity.id)")
-                } catch {
-                    print("❌ Errore Live Activity: \(error)")
+                    
+                    let contentState = ScheduleWidgetAttributes.ContentState(
+                        currentLesson: lesson.subject,
+                        teacher: lesson.teacher,
+                        classroom: lesson.classroom,
+                        startTime: lesson.startTime,
+                        endTime: lesson.endTime,
+                        progress: progress,
+                        remainingMinutes: remaining,
+                        color: lesson.color
+                    )
+                    
+                    do {
+                        let activity = try Activity<ScheduleWidgetAttributes>.request(
+                            attributes: attributes,
+                            content: .init(state: contentState, staleDate: nil)
+                        )
+                        print("✅ Live Activity avviata: \(activity.id)")
+                    } catch {
+                        print("❌ Errore Live Activity: \(error)")
+                    }
                 }
+                #endif
                 
                 break
             }

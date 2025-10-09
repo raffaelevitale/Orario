@@ -14,7 +14,7 @@ struct HomeView: View {
     @State private var isGreetingVisible = true
     @Binding var selectedTab: Int
     
-    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
     
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: currentTime)
@@ -103,6 +103,8 @@ struct HomeView: View {
             .preferredColorScheme(.dark)
             .onReceive(timer) { _ in
                 currentTime = Date()
+                // Forza aggiornamento del DataManager per aggiornare la UI
+                dataManager.objectWillChange.send()
             }
             .onAppear {
                 // Animazione del saluto

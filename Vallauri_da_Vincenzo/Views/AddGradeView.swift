@@ -31,6 +31,23 @@ struct AddGradeView: View {
         "Altro"
     ]
     
+    // Computed property per il titolo dinamico
+    private var dynamicTitle: String {
+        if selectedSubject.isEmpty {
+            return "Nuovo Voto"
+        } else if description.isEmpty {
+            let formattedGrade = gradeValue == floor(gradeValue) ? 
+                String(format: "%.0f", gradeValue) : 
+                String(format: "%.1f", gradeValue)
+            return "\(selectedSubject) - \(formattedGrade)"
+        } else {
+            let formattedGrade = gradeValue == floor(gradeValue) ? 
+                String(format: "%.0f", gradeValue) : 
+                String(format: "%.1f", gradeValue)
+            return "\(selectedSubject) - \(formattedGrade) - \(description)"
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -55,7 +72,7 @@ struct AddGradeView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("Nuovo Voto")
+            .navigationTitle(dynamicTitle)
             .navigationBarTitleDisplayMode(.large)
             .preferredColorScheme(.dark)
             .toolbar {

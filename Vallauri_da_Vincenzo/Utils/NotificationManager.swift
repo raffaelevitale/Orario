@@ -6,6 +6,328 @@ class NotificationManager {
     
     private init() {}
     
+    // MARK: - Configurazioni Avanzate
+    
+    /// Programma notifiche usando le configurazioni avanzate
+    func scheduleAdvancedNotifications(for lessons: [Lesson], settings: NotificationSettings) {
+        // Verifica prima i permessi
+        UNUserNotificationCenter.current().getNotificationSettings { notificationSettings in
+            guard notificationSettings.authorizationStatus == .authorized else {
+                print("Permessi notifiche non concessi")
+                return
+            }
+            
+            DispatchQueue.main.async {
+                // Rimuovi tutte le notifiche esistenti
+                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+                
+                // Aspetta un momento per assicurarsi che le notifiche siano rimosse
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.processAdvancedScheduling(lessons: lessons, settings: settings)
+                }
+            }
+        }
+    }
+    
+    private func processAdvancedScheduling(lessons: [Lesson], settings: NotificationSettings) {
+        guard settings.enableNotifications else { return }
+        
+        // Programma promemoria per lezioni con configurazioni avanzate
+        if settings.enableLessonReminders {
+            for lesson in lessons {
+                self.scheduleAdvancedLessonNotification(lesson: lesson, settings: settings)
+            }
+        }
+        
+        // Programma notifica quotidiana con configurazioni avanzate
+        if settings.enableDailyNotification {
+            self.scheduleAdvancedDailyNotification(lessons: lessons, settings: settings)
+        }
+        
+        // Programma promemoria personalizzati
+        for reminder in settings.customReminders where reminder.isEnabled {
+            self.scheduleCustomReminder(reminder: reminder, settings: settings)
+        }
+    }
+    
+    private func scheduleAdvancedLessonNotification(lesson: Lesson, settings: NotificationSettings) {
+        // Verifica se le notifiche sono attive per questo momento
+        let currentDate = Date()
+        guard settings.areNotificationsActiveAt(currentDate) else { return }
+        
+        // Ottieni configurazione specifica per la materia
+        let subjectConfig = settings.configForSubject(lesson.subject) ?? SubjectNotificationConfig(subjectName: lesson.subject)
+        
+        guard subjectConfig.isEnabled else { return }
+        
+        let content = UNMutableNotificationContent()
+        content.title = lesson.subject
+        
+        // Personalizza il messaggio in base alla priorità
+        switch subjectConfig.priority {
+        case .critical:
+            content.body = "🚨 IMPORTANTE: \(lesson.subject) tra \(subjectConfig.reminderMinutes) minuti - Aula: \(lesson.classroom)"
+        case .high:
+            content.body = "⚡ \(lesson.subject) tra \(subjectConfig.reminderMinutes) minuti - Aula: \(lesson.classroom)"
+        case .normal:
+            content.body = "📚 \(lesson.subject) tra \(subjectConfig.reminderMinutes) minuti - Aula: \(lesson.classroom)"
+        case .low:
+            content.body = "\(lesson.subject) tra \(subjectConfig.reminderMinutes) minuti - Aula: \(lesson.classroom)"
+        }
+        
+        if !lesson.teacher.isEmpty {
+            content.subtitle = "Prof. \(lesson.teacher)"
+        }
+        
+        // Imposta suono personalizzato se specificato
+        if let customSound = subjectConfig.customSound {
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(customSound))
+        } else {
+            content.sound = .default
+        }
+        
+        // Calcola l'orario di notifica
+        let timeComponents = lesson.startTime.components(separatedBy: ":")
+        guard let hour = Int(timeComponents[0]),
+              let minute = Int(timeComponents[1]) else {
+            print("❌ Errore nel parsing dell'orario: \(lesson.startTime)")
+            return
+        }
+        
+        var notificationMinute = minute - subjectConfig.reminderMinutes
+        var notificationHour = hour
+        
+        if notificationMinute < 0 {
+            notificationMinute += 60
+            notificationHour -= 1
+        }
+        
+        guard notificationHour >= 0 && notificationHour < 24,
+              notificationMinute >= 0 && notificationMinute < 60 else {
+            print("Orario notifica non valido: \(notificationHour):\(notificationMinute)")
+            return
+        }
+        
+        // Verifica se abilitare notifiche weekend
+        let isWeekend = lesson.dayOfWeek == 6 || lesson.dayOfWeek == 0 // Sabato o Domenica
+        guard !isWeekend || subjectConfig.enableWeekendReminders else { return }
+        
+        // Crea il trigger per ogni settimana
+        var dateComponents = DateComponents()
+        dateComponents.weekday = (lesson.dayOfWeek % 7) + 1
+        dateComponents.hour = notificationHour
+        dateComponents.minute = notificationMinute
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        
+        let request = UNNotificationRequest(
+            identifier: "advanced-lesson-\(lesson.id)-\(lesson.dayOfWeek)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Errore scheduling notifica avanzata per \(lesson.subject): \(error)")
+            } else {
+                print("Notifica avanzata programmata per \(lesson.subject) - \(dateComponents.weekday!) alle \(notificationHour):\(String(format: "%02d", notificationMinute))")
+                
+                // Registra evento per analytics
+                let event = NotificationEvent(
+                    type: .lessonReminder,
+                    subjectName: lesson.subject,
+                    wasDelivered: true
+                )
+                SettingsManager.shared.recordNotificationEvent(event)
+            }
+        }
+    }
+    
+    private func scheduleAdvancedDailyNotification(lessons: [Lesson], settings: NotificationSettings) {
+        let calendar = Calendar.current
+        let notificationTime = settings.dailyNotificationTime
+        let hour = calendar.component(.hour, from: notificationTime)
+        let minute = calendar.component(.minute, from: notificationTime)
+        
+        // Programma notifiche per ogni giorno della settimana
+        for dayOfWeek in 1...7 {
+            guard let dayOfWeekEnum = DaySchedule.DayOfWeek.allCases.first(where: { 
+                $0.weekdayComponent == dayOfWeek + 1 
+            }),
+            let daySchedule = settings.scheduleForDay(dayOfWeekEnum) else { 
+                continue 
+            }
+            
+            guard daySchedule.isEnabled else { continue }
+            
+            let todayLessons = lessons.filter { 
+                $0.dayOfWeek == dayOfWeek && $0.subject != "Intervallo" 
+            }.sorted { $0.startTime < $1.startTime }
+            
+            guard !todayLessons.isEmpty else { continue }
+            
+            let content = UNMutableNotificationContent()
+            content.title = "📚 Buona scuola!"
+            
+            // Filtra lezioni in base alle configurazioni delle materie
+            let enabledLessons = todayLessons.filter { lesson in
+                let config = settings.configForSubject(lesson.subject)
+                return config?.isEnabled ?? true
+            }
+            
+            if enabledLessons.isEmpty { continue }
+            
+            // Crea l'elenco delle materie
+            let subjects = enabledLessons.map { $0.subject }
+            let uniqueSubjects = Array(Set(subjects)).sorted()
+            
+            if settings.enableSmartScheduling {
+                // Notifica intelligente con informazioni sul carico di lavoro
+                content.body = generateSmartDailyMessage(subjects: uniqueSubjects, lessons: enabledLessons, settings: settings)
+            } else {
+                // Notifica standard
+                content.body = generateStandardDailyMessage(subjects: uniqueSubjects)
+            }
+            
+            content.sound = .default
+            content.badge = 1
+            
+            // Verifica ore di silenzio
+            let proposedTime = calendar.date(from: DateComponents(hour: hour, minute: minute)) ?? Date()
+            if let quietHours = daySchedule.quietHours ?? (settings.globalQuietHours.isEnabled ? settings.globalQuietHours : nil) {
+                if isTimeInQuietHours(proposedTime, quietHours: quietHours) {
+                    continue // Salta questo giorno se è nelle ore di silenzio
+                }
+            }
+            
+            var dateComponents = DateComponents()
+            dateComponents.weekday = dayOfWeek + 1
+            dateComponents.hour = hour
+            dateComponents.minute = minute
+            
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+            
+            let request = UNNotificationRequest(
+                identifier: "advanced-daily-\(dayOfWeek)",
+                content: content,
+                trigger: trigger
+            )
+            
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    print("Errore programmazione notifica quotidiana avanzata per giorno \(dayOfWeek): \(error)")
+                } else {
+                    let dayName = calendar.weekdaySymbols[dayOfWeek - 1]
+                    print("✅ Notifica quotidiana avanzata programmata per \(dayName) alle \(String(format: "%02d:%02d", hour, minute))")
+                }
+            }
+        }
+    }
+    
+    private func scheduleCustomReminder(reminder: CustomReminder, settings: NotificationSettings) {
+        let content = UNMutableNotificationContent()
+        content.title = "🔔 Promemoria"
+        content.body = reminder.title
+        content.sound = .default
+        
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: reminder.time)
+        let minute = calendar.component(.minute, from: reminder.time)
+        
+        var dateComponents = DateComponents()
+        dateComponents.hour = hour
+        dateComponents.minute = minute
+        
+        // Gestisci pattern di ripetizione
+        let trigger: UNNotificationTrigger
+        switch reminder.repeatPattern {
+        case .daily:
+            trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        case .weekdays:
+            // Programma per lunedì-venerdì
+            for weekday in 2...6 {
+                var weekdayComponents = dateComponents
+                weekdayComponents.weekday = weekday
+                let weekdayTrigger = UNCalendarNotificationTrigger(dateMatching: weekdayComponents, repeats: true)
+                
+                let request = UNNotificationRequest(
+                    identifier: "custom-reminder-\(reminder.id)-\(weekday)",
+                    content: content,
+                    trigger: weekdayTrigger
+                )
+                
+                UNUserNotificationCenter.current().add(request)
+            }
+            return
+        case .weekly:
+            let weekday = calendar.component(.weekday, from: reminder.time)
+            dateComponents.weekday = weekday
+            trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        case .never, .custom:
+            trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        }
+        
+        let request = UNNotificationRequest(
+            identifier: "custom-reminder-\(reminder.id)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Errore programmazione promemoria personalizzato: \(error)")
+            } else {
+                print("✅ Promemoria personalizzato programmato: \(reminder.title)")
+            }
+        }
+    }
+    
+    // MARK: - Metodi di Utilità Avanzati
+    
+    private func generateSmartDailyMessage(subjects: [String], lessons: [Lesson], settings: NotificationSettings) -> String {
+        let subjectCount = subjects.count
+        
+        if subjectCount == 1 {
+            return "Oggi hai: \(subjects[0]). Concentrati e dai il massimo! 🎯"
+        } else if subjectCount <= 3 {
+            return "Oggi hai \(subjectCount) materie: \(subjects.joined(separator: ", ")). Organizza bene la giornata! 📝"
+        } else {
+            let heavyLoad = subjectCount > 5
+            let motivationalMessage = heavyLoad ? "Giornata intensa ma ce la puoi fare! 💪" : "Buona giornata di studio! 📚"
+            return "Oggi hai \(subjectCount) materie. \(motivationalMessage)"
+        }
+    }
+    
+    private func generateStandardDailyMessage(subjects: [String]) -> String {
+        if subjects.count == 1 {
+            return "Oggi hai: \(subjects[0]). Buona giornata! 🎓"
+        } else if subjects.count <= 3 {
+            let subjectsList = subjects.joined(separator: ", ")
+            return "Oggi hai: \(subjectsList). Buona giornata! 🎓"
+        } else {
+            return "Oggi hai \(subjects.count) materie: \(subjects.prefix(3).joined(separator: ", ")) e altre. Buona giornata! 🎓"
+        }
+    }
+    
+    private func isTimeInQuietHours(_ time: Date, quietHours: QuietHours) -> Bool {
+        let calendar = Calendar.current
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
+        let startComponents = calendar.dateComponents([.hour, .minute], from: quietHours.startTime)
+        let endComponents = calendar.dateComponents([.hour, .minute], from: quietHours.endTime)
+        
+        let currentMinutes = (timeComponents.hour ?? 0) * 60 + (timeComponents.minute ?? 0)
+        let startMinutes = (startComponents.hour ?? 0) * 60 + (startComponents.minute ?? 0)
+        let endMinutes = (endComponents.hour ?? 0) * 60 + (endComponents.minute ?? 0)
+        
+        if startMinutes <= endMinutes {
+            return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+        } else {
+            return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+        }
+    }
+    
+    // MARK: - Metodi Legacy (mantenuti per compatibilità)
+    
     func scheduleNotifications(for lessons: [Lesson]) {
         // Verifica prima i permessi
         UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -18,16 +340,19 @@ class NotificationManager {
                 // Rimuovi tutte le notifiche esistenti
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 
-                // Programma i promemoria delle lezioni se abilitati
-                if SettingsManager.shared.enableLessonReminders {
-                    for lesson in lessons {
-                        self.scheduleWeeklyNotification(for: lesson)
+                // Aspetta un momento per assicurarsi che le notifiche siano rimosse
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Programma i promemoria delle lezioni se abilitati
+                    if SettingsManager.shared.enableLessonReminders {
+                        for lesson in lessons {
+                            self.scheduleWeeklyNotification(for: lesson)
+                        }
                     }
-                }
-                
-                // Programma anche la notifica quotidiana se abilitata
-                if SettingsManager.shared.enableDailyNotification {
-                    self.scheduleDailySchoolNotification(for: lessons)
+                    
+                    // Programma anche la notifica quotidiana se abilitata
+                    if SettingsManager.shared.enableDailyNotification {
+                        self.scheduleDailySchoolNotification(for: lessons)
+                    }
                 }
             }
         }

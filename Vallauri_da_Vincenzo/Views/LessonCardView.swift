@@ -13,6 +13,7 @@ struct LessonCardView: View {
     @State private var isPulsing = false
     @State private var currentTime = Date()
     @State private var showLiveActivityAlert = false
+    @State private var showLiveActivityToast = false
     
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     
@@ -277,27 +278,65 @@ struct LessonCardView: View {
             currentTime = Date()
         }
         .onTapGesture {
-            withAnimation {
+            // Animazione di feedback
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                 isPressed = true
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
                     isPressed = false
                 }
             }
 
+            // Feedback aptico
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+
             // Different actions for lessons and breaks
             if lesson.subject == "Intervallo" {
-                // Maybe show break activities or timer
                 print("Break tapped: \(lesson.classroom)")
             } else {
-                // Avvia Live Activity per questa lezione (temporaneamente disabilitato per debug)
-                // dataManager.startLiveActivity(for: lesson)
-                // showLiveActivityAlert = true
-                print("Lesson tapped: \(lesson.subject) - Live Activity temporaneamente disabilitata")
+                // Avvia Live Activity per questa lezione
+                dataManager.startLiveActivity(for: lesson)
+                
+                // Mostra toast di conferma
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showLiveActivityToast = true
+                }
+                
+                // Nasconde il toast dopo 2 secondi
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showLiveActivityToast = false
+                    }
+                }
+                
+                print("✅ Live Activity richiesta per: \(lesson.subject)")
             }
         }
+        .overlay(
+            // Toast notification per conferma Live Activity
+            VStack {
+                if showLiveActivityToast {
+                    HStack {
+                        Image(systemName: "bell.badge.fill")
+                            .foregroundColor(.white)
+                        Text("Live Activity attivata")
+                            .foregroundColor(.white)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.green)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    .transition(.scale.combined(with: .opacity))
+                }
+                Spacer()
+            }
+            .padding(.top, 8)
+        )
         // Alert temporaneamente commentato
         /*
         .alert("Live Activity Avviata", isPresented: $showLiveActivityAlert) {

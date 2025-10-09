@@ -56,6 +56,12 @@ struct ContentView: View {
         .onChange(of: settingsManager.isCompactNavigation) { _ in
             updateNavigationAppearance()
         }
+        .onChange(of: settingsManager.backgroundColor) { _ in
+            // Forza refresh quando cambia il background
+            DispatchQueue.main.async {
+                self.updateNavigationAppearance()
+            }
+        }
     }
     
     private func setupNotifications() {

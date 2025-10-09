@@ -18,10 +18,17 @@ class SettingsManager: ObservableObject {
         return calendar.date(from: DateComponents(hour: 7, minute: 30)) ?? Date()
     }()
     
+    // MARK: - Configurazioni Avanzate Notifiche
+    @Published var notificationSettings: NotificationSettings = NotificationSettings()
+    
     private let userDefaults = UserDefaults.standard
+    private let notificationSettingsKey = "AdvancedNotificationSettings"
     
     init() {
         loadSettings()
+        
+        // Sincronizza le impostazioni base con quelle avanzate
+        syncBasicWithAdvancedSettings()
     }
     
     func saveSettings() {
@@ -32,6 +39,9 @@ class SettingsManager: ObservableObject {
         userDefaults.set(enableDailyNotification, forKey: "enableDailyNotification")
         userDefaults.set(enableLessonReminders, forKey: "enableLessonReminders")
         userDefaults.set(dailyNotificationTime, forKey: "dailyNotificationTime")
+        
+        // Salva anche le configurazioni avanzate
+        saveAdvancedNotificationSettings()
     }
     
     private func loadSettings() {
@@ -59,6 +69,88 @@ class SettingsManager: ObservableObject {
         
         if let savedTime = userDefaults.object(forKey: "dailyNotificationTime") as? Date {
             dailyNotificationTime = savedTime
+        }
+        
+        // Carica le configurazioni avanzate
+        loadAdvancedNotificationSettings()
+    }
+    
+    // MARK: - Gestione Configurazioni Avanzate
+    
+    private func loadAdvancedNotificationSettings() {
+        if let data = userDefaults.data(forKey: notificationSettingsKey),
+           let settings = try? JSONDecoder().decode(NotificationSettings.self, from: data) {
+            notificationSettings = settings
+        } else {
+            // Prima installazione - inizializza con valori predefiniti
+            notificationSettings = NotificationSettings()
+            saveAdvancedNotificationSettings()
+        }
+    }
+    
+    private func saveAdvancedNotificationSettings() {
+        if let data = try? JSONEncoder().encode(notificationSettings) {
+            userDefaults.set(data, forKey: notificationSettingsKey)
+        }
+    }
+    
+    private func syncBasicWithAdvancedSettings() {
+        // Sincronizza le impostazioni base con quelle avanzate per compatibilità
+        notificationSettings.enableNotifications = enableNotifications
+        notificationSettings.enableLessonReminders = enableLessonReminders
+        notificationSettings.enableDailyNotification = enableDailyNotification
+        notificationSettings.dailyNotificationTime = dailyNotificationTime
+    }
+    
+    /// Aggiorna configurazione per una specifica materia
+    func updateSubjectConfig(_ subject: String, config: SubjectNotificationConfig) {
+        if let index = notificationSettings.subjectConfigs.firstIndex(where: { $0.subjectName == subject }) {
+            notificationSettings.subjectConfigs[index] = config
+        } else {
+            notificationSettings.subjectConfigs.append(config)
+        }
+        saveAdvancedNotificationSettings()
+    }
+    
+    /// Aggiorna programma per un giorno specifico
+    func updateDaySchedule(_ day: DaySchedule.DayOfWeek, schedule: DaySchedule) {
+        if let index = notificationSettings.daySchedules.firstIndex(where: { $0.dayOfWeek == day }) {
+            notificationSettings.daySchedules[index] = schedule
+        } else {
+            notificationSettings.daySchedules.append(schedule)
+        }
+        saveAdvancedNotificationSettings()
+    }
+    
+    /// Aggiungi evento di notifica per analytics
+    func recordNotificationEvent(_ event: NotificationEvent) {
+        notificationSettings.notificationHistory.append(event)
+        
+        // Mantieni solo gli ultimi 100 eventi per performance
+        if notificationSettings.notificationHistory.count > 100 {
+            notificationSettings.notificationHistory.removeFirst(notificationSettings.notificationHistory.count - 100)
+        }
+        
+        // Aggiorna metriche
+        updatePerformanceMetrics(for: event)
+        saveAdvancedNotificationSettings()
+    }
+    
+    private func updatePerformanceMetrics(for event: NotificationEvent) {
+        notificationSettings.performanceMetrics.totalNotificationsSent += 1
+        
+        if event.wasDelivered {
+            notificationSettings.performanceMetrics.notificationsDelivered += 1
+        }
+        
+        if event.wasInteracted {
+            notificationSettings.performanceMetrics.notificationsInteracted += 1
+        }
+        
+        // Aggiorna engagement per materia
+        if let subject = event.subjectName {
+            let currentEngagement = notificationSettings.performanceMetrics.subjectEngagement[subject] ?? 0
+            notificationSettings.performanceMetrics.subjectEngagement[subject] = currentEngagement + (event.wasInteracted ? 1 : 0)
         }
     }
 }
@@ -122,7 +214,7 @@ enum BackgroundColor: String, CaseIterable {
 }
 
 struct SettingsView: View {
-    @StateObject private var settingsManager = SettingsManager()
+    @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var dataManager: DataManager
     @State private var showingResetAlert = false
     
@@ -148,8 +240,8 @@ struct SettingsView: View {
                         // Navigation Settings
                         navigationSection
                         
-                        // Notification Settings
-                        notificationSection
+                        // Enhanced Notification Settings
+                        enhancedNotificationSection
                         
                         // Data Management
                         dataSection
@@ -200,11 +292,20 @@ struct SettingsView: View {
         // Richiedi permessi se necessario
         NotificationManager.shared.requestPermissions { granted in
             if granted {
-                if self.settingsManager.enableLessonReminders {
-                    self.dataManager.rescheduleNotifications()
-                }
-                if self.settingsManager.enableDailyNotification {
-                    NotificationManager.shared.scheduleDailySchoolNotification(for: self.dataManager.lessons)
+                // Usa il sistema avanzato se abilitato, altrimenti il sistema legacy
+                if self.settingsManager.notificationSettings.enableSmartScheduling {
+                    NotificationManager.shared.scheduleAdvancedNotifications(
+                        for: self.dataManager.lessons,
+                        settings: self.settingsManager.notificationSettings
+                    )
+                } else {
+                    // Sistema legacy
+                    if self.settingsManager.enableLessonReminders {
+                        self.dataManager.rescheduleNotifications()
+                    }
+                    if self.settingsManager.enableDailyNotification {
+                        NotificationManager.shared.scheduleDailySchoolNotification(for: self.dataManager.lessons)
+                    }
                 }
             }
         }
@@ -276,12 +377,13 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - Notification Section
-    private var notificationSection: some View {
+    // MARK: - Enhanced Notification Section
+    private var enhancedNotificationSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionHeaderView(title: "Notifiche", icon: "bell.fill")
             
             VStack(spacing: 0) {
+                // Controlli Base (esistenti)
                 SettingsRowView(
                     title: "Notifiche generali",
                     subtitle: "Abilita tutte le notifiche",
@@ -413,6 +515,106 @@ struct SettingsView: View {
                         }
                         .padding()
                     }
+                    
+                    // Separatore per le nuove sezioni
+                    Divider()
+                        .background(.white.opacity(0.4))
+                        .padding(.vertical, 8)
+                    
+                    // Configurazione Avanzata [NUOVO]
+                    NavigationLink(destination: AdvancedNotificationConfigView()) {
+                        HStack {
+                            Image(systemName: "gearshape.2.fill")
+                                .foregroundColor(.purple)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Configurazione Avanzata")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                
+                                Text("Personalizza per materia e orari")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        .padding()
+                    }
+                    
+                    Divider()
+                        .background(.white.opacity(0.2))
+                    
+                    // Scheduling Personalizzato [NUOVO]
+                    NavigationLink(destination: CustomSchedulingView()) {
+                        HStack {
+                            Image(systemName: "calendar.badge.plus")
+                                .foregroundColor(.green)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Scheduling Personalizzato")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                
+                                Text("Orari e promemoria su misura")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        .padding()
+                    }
+                    
+                    Divider()
+                        .background(.white.opacity(0.2))
+                    
+                    // Analytics & Debug [NUOVO]
+                    NavigationLink(destination: NotificationAnalyticsView()) {
+                        HStack {
+                            Image(systemName: "chart.bar.doc.horizontal.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Analytics & Debug")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                
+                                Text("Statistiche e strumenti di debug")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 4) {
+                                if settingsManager.notificationSettings.enableAnalytics {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                }
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                        }
+                        .padding()
+                    }
                 }
             }
             .background(.ultraThinMaterial)
@@ -423,25 +625,62 @@ struct SettingsView: View {
                 // Disabilita tutte le notifiche
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
             } else {
-                // Riabilita le notifiche
-                rescheduleNotifications()
+                // Riabilita le notifiche usando il sistema avanzato se configurato
+                if settingsManager.notificationSettings.enableSmartScheduling {
+                    NotificationManager.shared.scheduleAdvancedNotifications(
+                        for: dataManager.lessons,
+                        settings: settingsManager.notificationSettings
+                    )
+                } else {
+                    rescheduleNotifications()
+                }
             }
+            // Sincronizza con le impostazioni avanzate
+            settingsManager.notificationSettings.enableNotifications = enabled
+            settingsManager.saveSettings()
         }
         .onChange(of: settingsManager.enableDailyNotification) { enabled in
+            settingsManager.notificationSettings.enableDailyNotification = enabled
             if enabled {
-                NotificationManager.shared.scheduleDailySchoolNotification(for: dataManager.lessons)
+                if settingsManager.notificationSettings.enableSmartScheduling {
+                    NotificationManager.shared.scheduleAdvancedNotifications(
+                        for: dataManager.lessons,
+                        settings: settingsManager.notificationSettings
+                    )
+                } else {
+                    NotificationManager.shared.scheduleDailySchoolNotification(for: dataManager.lessons)
+                }
             } else {
                 NotificationManager.shared.cancelDailySchoolNotifications()
             }
+            settingsManager.saveSettings()
         }
-        .onChange(of: settingsManager.enableLessonReminders) { _ in
-            rescheduleNotifications()
+        .onChange(of: settingsManager.enableLessonReminders) { enabled in
+            settingsManager.notificationSettings.enableLessonReminders = enabled
+            if settingsManager.notificationSettings.enableSmartScheduling {
+                NotificationManager.shared.scheduleAdvancedNotifications(
+                    for: dataManager.lessons,
+                    settings: settingsManager.notificationSettings
+                )
+            } else {
+                rescheduleNotifications()
+            }
+            settingsManager.saveSettings()
         }
-        .onChange(of: settingsManager.dailyNotificationTime) { _ in
+        .onChange(of: settingsManager.dailyNotificationTime) { newTime in
+            settingsManager.notificationSettings.dailyNotificationTime = newTime
             if settingsManager.enableDailyNotification {
                 NotificationManager.shared.cancelDailySchoolNotifications()
-                NotificationManager.shared.scheduleDailySchoolNotification(for: dataManager.lessons)
+                if settingsManager.notificationSettings.enableSmartScheduling {
+                    NotificationManager.shared.scheduleAdvancedNotifications(
+                        for: dataManager.lessons,
+                        settings: settingsManager.notificationSettings
+                    )
+                } else {
+                    NotificationManager.shared.scheduleDailySchoolNotification(for: dataManager.lessons)
+                }
             }
+            settingsManager.saveSettings()
         }
     }
     
