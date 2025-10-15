@@ -227,6 +227,18 @@ class WeeklyPlannerManager: ObservableObject {
         }
     }
     
+    func getAllTasks() -> [PlannerTask] {
+        return tasks.sorted { task1, task2 in
+            if task1.isCompleted != task2.isCompleted {
+                return !task1.isCompleted
+            }
+            if task1.priority != task2.priority {
+                return task1.priority.rawValue > task2.priority.rawValue
+            }
+            return task1.dueDate < task2.dueDate
+        }
+    }
+    
     func getTasksBySubject() -> [String: [PlannerTask]] {
         Dictionary(grouping: tasks) { $0.subject }
     }

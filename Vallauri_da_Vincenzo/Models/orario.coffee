@@ -32,9 +32,9 @@
         Lesson(subject: "Inglese", teacher: "FOGLIA P.", classroom: "T65 TEST (27)", dayOfWeek: 4, startTime: "13:10", endTime: "14:00", color: "#42a5f5"),
 
         //VENERDI
-        Lesson(subject: "Informatica", teacher: "BONAVIA M.", classroom: "LAB.119B EULERO (25)", dayOfWeek: 5, startTime: "07:50", endTime: "08:50", color: "#7e57c2"),
-        Lesson(subject: "Italiano", teacher: "CARANTA P.", classroom: "T64 (28)", dayOfWeek: 5, startTime: "08:50", endTime: "09:45", color: "#8d6e63"),
-        Lesson(subject: "Matematica", teacher: "GARRO V.", classroom: "T64 (28)", dayOfWeek: 5, startTime: "09:45", endTime: "10:40", color: "#ef5350"),
+        Lesson(subject: "Informatica", teacher: "BONAVIA M.", classroom: "LAB.S22 ARCHIMEDE (26)", dayOfWeek: 5, startTime: "07:50", endTime: "08:50", color: "#7e57c2"),
+        Lesson(subject: "Italiano", teacher: "CARANTA P.", classroom: "T11 (30)", dayOfWeek: 5, startTime: "08:50", endTime: "09:45", color: "#8d6e63"),
+        Lesson(subject: "Matematica", teacher: "GARRO V.", classroom: "T11 (30)", dayOfWeek: 5, startTime: "09:45", endTime: "10:40", color: "#ef5350"),
         Lesson(subject: "Gestione progetto", teacher: "FEA D., MAGGIORE G.", classroom: "LAB.T59 PLC (24)", dayOfWeek: 5, startTime: "11:00", endTime: "11:55", color: "#26a69a"),
         Lesson(subject: "Gestione progetto", teacher: "FEA D., MAGGIORE G.", classroom: "LAB.T59 PLC (24)", dayOfWeek: 5, startTime: "11:55", endTime: "12:50", color: "#26a69a"),
         Lesson(subject: "Gestione progetto", teacher: "FEA D., MAGGIORE G.", classroom: "LAB.T59 PLC (24)", dayOfWeek: 5, startTime: "12:50", endTime: "13:40", color: "#26a69a"),

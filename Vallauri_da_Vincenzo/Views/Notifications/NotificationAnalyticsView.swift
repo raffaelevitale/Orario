@@ -3,6 +3,7 @@ import Charts
 
 struct NotificationAnalyticsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedTab: AnalyticsTab = .overview
@@ -139,6 +140,7 @@ struct NotificationAnalyticsView: View {
                     withAnimation(.spring(response: 0.3)) {
                         selectedTab = tab
                     }
+                    HapticManager.shared.selection()
                 }) {
                     VStack(spacing: 8) {
                         Image(systemName: tab.icon)
@@ -199,6 +201,9 @@ struct NotificationAnalyticsView: View {
     private var debugSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionHeaderView(title: "Strumenti di Debug", icon: "ladybug")
+            
+            // Subject notifications overview
+            subjectsNotificationsCard
             
             // Debug controls
             debugControls
@@ -394,6 +399,56 @@ struct NotificationAnalyticsView: View {
     }
     
     // MARK: - Debug Controls
+    // MARK: - Subjects Notifications Card
+    private var subjectsNotificationsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "books.vertical.fill")
+                    .foregroundColor(.cyan)
+                Text("Notifiche per Materia")
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+            
+            let subjects = dataManager.lessons
+                .map { $0.subject }
+                .filter { $0 != "Intervallo" }
+                .reduce(into: [String]()) { result, subject in
+                    if !result.contains(subject) {
+                        result.append(subject)
+                    }
+                }
+                .sorted()
+            
+            if subjects.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "tray")
+                        .font(.largeTitle)
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("Nessuna materia presente")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                    ForEach(subjects, id: \.self) { subject in
+                        SubjectNotificationStatusCard(
+                            subject: subject,
+                            color: Color.fromHex(dataManager.getColorFor(subject: subject)) ?? .blue,
+                            isEnabled: settingsManager.notificationSettings.configForSubject(subject)?.isEnabled ?? true
+                        )
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+    
+    // MARK: - Debug Controls
     private var debugControls: some View {
         VStack(spacing: 0) {
             // Modalità debug toggle
@@ -425,6 +480,7 @@ struct NotificationAnalyticsView: View {
             // Test controls
             VStack(spacing: 12) {
                 Button("Invia Notifica Test") {
+                    HapticManager.shared.impact(style: .medium)
                     NotificationManager.shared.sendTestNotification()
                 }
                 .foregroundColor(.blue)
@@ -434,6 +490,7 @@ struct NotificationAnalyticsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 
                 Button("Test Completo Sistema") {
+                    HapticManager.shared.impact(style: .medium)
                     NotificationManager.shared.runCompleteTest()
                 }
                 .foregroundColor(.green)
@@ -443,6 +500,7 @@ struct NotificationAnalyticsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 
                 Button("Reset Analytics") {
+                    HapticManager.shared.warning()
                     resetAnalytics()
                 }
                 .foregroundColor(.orange)
@@ -1062,7 +1120,50 @@ struct DebugLogsView: View {
     }
 }
 
+// MARK: - Subject Notification Status Card
+struct SubjectNotificationStatusCard: View {
+    let subject: String
+    let color: Color
+    let isEnabled: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 8, height: 8)
+                
+                Text(subject)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .foregroundColor(.white)
+            }
+            
+            HStack {
+                Image(systemName: isEnabled ? "bell.fill" : "bell.slash.fill")
+                    .font(.caption2)
+                    .foregroundColor(isEnabled ? .green : .gray)
+                
+                Text(isEnabled ? "Attiva" : "Disattivata")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.7))
+                
+                Spacer()
+            }
+        }
+        .padding(10)
+        .background(color.opacity(0.15))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(color.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
 #Preview {
     NotificationAnalyticsView()
         .environmentObject(SettingsManager())
+        .environmentObject(DataManager())
 }

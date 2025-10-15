@@ -130,7 +130,7 @@ struct EditGradeView: View {
                 .fill(.ultraThinMaterial)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(selectedSubject.isEmpty ? .red.opacity(0.5) : Color(hex: dataManager.getColorFor(subject: selectedSubject)).opacity(0.5), lineWidth: 1.5)
+                        .stroke(selectedSubject.isEmpty ? .red.opacity(0.5) : (Color.fromHex(dataManager.getColorFor(subject: selectedSubject)) ?? .blue).opacity(0.5), lineWidth: 1.5)
                 }
             
             VStack(alignment: .leading, spacing: 15) {
@@ -160,7 +160,7 @@ struct EditGradeView: View {
         Button(action: { selectedSubject = subject }) {
             HStack {
                 Circle()
-                    .fill(Color(hex: dataManager.getColorFor(subject: subject)))
+                    .fill(Color.fromHex(dataManager.getColorFor(subject: subject)) ?? .blue)
                     .frame(width: 12, height: 12)
                 
                 Text(subject)

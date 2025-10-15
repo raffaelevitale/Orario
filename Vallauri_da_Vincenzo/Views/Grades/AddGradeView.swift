@@ -169,7 +169,10 @@ struct AddGradeView: View {
     }
     
     private func subjectButton(_ subject: String) -> some View {
-        Button(action: { selectedSubject = subject }) {
+        Button(action: { 
+            selectedSubject = subject
+            HapticManager.shared.selection()
+        }) {
             HStack {
                 Circle()
                     .fill(Color(hex: dataManager.getColorFor(subject: subject)))
@@ -236,7 +239,11 @@ struct AddGradeView: View {
                         get: { gradeValue },
                         set: { newValue in
                             // Arrotonda al più vicino 0.5
-                            gradeValue = round(newValue * 2) / 2
+                            let rounded = round(newValue * 2) / 2
+                            if rounded != gradeValue {
+                                HapticManager.shared.impact(style: .light)
+                            }
+                            gradeValue = rounded
                         }
                     ), in: 1...10, step: 0.5)
                         .accentColor(Color(hex: getGradeColor(gradeValue)))
@@ -362,12 +369,14 @@ struct AddGradeView: View {
         guard !selectedSubject.isEmpty else {
             alertMessage = "Seleziona una materia"
             showingAlert = true
+            HapticManager.shared.error()
             return
         }
         
         guard !description.isEmpty else {
             alertMessage = "Inserisci una descrizione per il voto"
             showingAlert = true
+            HapticManager.shared.error()
             return
         }
         
@@ -384,6 +393,7 @@ struct AddGradeView: View {
         )
         
         dataManager.addGrade(newGrade)
+        HapticManager.shared.gradeAdded(value: gradeValue)
         dismiss()
     }
     

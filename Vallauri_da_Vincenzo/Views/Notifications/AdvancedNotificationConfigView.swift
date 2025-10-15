@@ -101,6 +101,7 @@ struct AdvancedNotificationConfigView: View {
                     withAnimation(.spring(response: 0.3)) {
                         selectedTab = tab
                     }
+                    HapticManager.shared.selection()
                 }) {
                     VStack(spacing: 8) {
                         Image(systemName: tab.icon)
@@ -495,6 +496,7 @@ struct SubjectConfigRowView: View {
     let subject: String
     @State private var config: SubjectNotificationConfig
     let onConfigChange: (SubjectNotificationConfig) -> Void
+    @EnvironmentObject var dataManager: DataManager
     
     @State private var isExpanded = false
     
@@ -504,6 +506,10 @@ struct SubjectConfigRowView: View {
         self.onConfigChange = onConfigChange
     }
     
+    private var subjectColor: Color {
+        Color.fromHex(dataManager.getColorFor(subject: subject)) ?? .blue
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header row
@@ -511,28 +517,51 @@ struct SubjectConfigRowView: View {
                 withAnimation(.spring(response: 0.3)) {
                     isExpanded.toggle()
                 }
+                HapticManager.shared.impact(style: .light)
             }) {
-                HStack {
-                    Image(systemName: config.isEnabled ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(config.isEnabled ? .green : .gray)
+                HStack(spacing: 12) {
+                    // Color indicator
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(subjectColor)
+                        .frame(width: 4, height: 50)
+                    
+                    // Status icon
+                    Image(systemName: config.isEnabled ? "bell.badge.fill" : "bell.slash.fill")
+                        .foregroundColor(config.isEnabled ? subjectColor : .gray)
                         .font(.title3)
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(subject)
                             .font(.body)
-                            .fontWeight(.medium)
+                            .fontWeight(.semibold)
                             .foregroundColor(.white)
                         
-                        Text("\(config.reminderMinutes) min prima • Priorità \(config.priority.rawValue)")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                        HStack(spacing: 8) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock.fill")
+                                    .font(.caption2)
+                                Text("\(config.reminderMinutes) min")
+                                    .font(.caption)
+                            }
+                            
+                            Text("•")
+                                .font(.caption2)
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: priorityIcon(config.priority))
+                                    .font(.caption2)
+                                Text(config.priority.rawValue)
+                                    .font(.caption)
+                            }
+                        }
+                        .foregroundColor(.white.opacity(0.7))
                     }
                     
                     Spacer()
                     
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.white.opacity(0.6))
-                        .font(.caption)
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .foregroundColor(subjectColor.opacity(0.8))
+                        .font(.title3)
                 }
                 .padding()
             }
@@ -541,54 +570,117 @@ struct SubjectConfigRowView: View {
                 Divider()
                     .background(.white.opacity(0.2))
                 
-                VStack(spacing: 12) {
+                VStack(spacing: 16) {
                     // Enable toggle
                     HStack {
-                        Text("Abilitato")
+                        Image(systemName: "bell.badge")
+                            .foregroundColor(subjectColor)
+                        Text("Notifiche abilitate")
                             .foregroundColor(.white)
+                            .fontWeight(.medium)
                         Spacer()
                         Toggle("", isOn: $config.isEnabled)
-                            .tint(.green)
+                            .tint(subjectColor)
+                            .onChange(of: config.isEnabled) { _ in
+                                HapticManager.shared.selection()
+                            }
                     }
                     
+                    Divider()
+                        .background(.white.opacity(0.1))
+                    
                     // Reminder minutes
-                    HStack {
-                        Text("Promemoria (minuti prima)")
-                            .foregroundColor(.white)
-                        Spacer()
-                        Stepper("\(config.reminderMinutes)", value: $config.reminderMinutes, in: 1...30)
-                            .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "clock")
+                                .foregroundColor(subjectColor)
+                            Text("Anticipo promemoria")
+                                .foregroundColor(.white)
+                                .fontWeight(.medium)
+                        }
+                        
+                        HStack {
+                            Text("Notifica")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                            Spacer()
+                            Stepper("\(config.reminderMinutes) minuti prima", value: $config.reminderMinutes, in: 1...30)
+                                .foregroundColor(subjectColor)
+                                .onChange(of: config.reminderMinutes) { _ in
+                                    HapticManager.shared.impact(style: .light)
+                                }
+                        }
                     }
+                    .padding(12)
+                    .background(subjectColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
+                    Divider()
+                        .background(.white.opacity(0.1))
                     
                     // Priority picker
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Priorità")
-                            .foregroundColor(.white)
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundColor(subjectColor)
+                            Text("Priorità notifica")
+                                .foregroundColor(.white)
+                                .fontWeight(.medium)
+                        }
                         
                         Picker("Priorità", selection: $config.priority) {
                             ForEach(SubjectNotificationConfig.NotificationPriority.allCases, id: \.self) { priority in
-                                Text(priority.rawValue).tag(priority)
+                                HStack {
+                                    Image(systemName: priorityIcon(priority))
+                                    Text(priority.rawValue)
+                                }
+                                .tag(priority)
                             }
                         }
                         .pickerStyle(.segmented)
+                        .onChange(of: config.priority) { _ in
+                            HapticManager.shared.selection()
+                        }
                     }
+                    
+                    Divider()
+                        .background(.white.opacity(0.1))
                     
                     // Weekend reminders
                     HStack {
+                        Image(systemName: "calendar.badge.clock")
+                            .foregroundColor(subjectColor)
                         Text("Promemoria weekend")
                             .foregroundColor(.white)
+                            .fontWeight(.medium)
                         Spacer()
                         Toggle("", isOn: $config.enableWeekendReminders)
-                            .tint(.blue)
+                            .tint(subjectColor)
+                            .onChange(of: config.enableWeekendReminders) { _ in
+                                HapticManager.shared.selection()
+                            }
                     }
                 }
                 .padding()
             }
         }
         .background(.ultraThinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(config.isEnabled ? subjectColor.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1.5)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .onChange(of: config) { newConfig in
             onConfigChange(newConfig)
+        }
+    }
+    
+    private func priorityIcon(_ priority: SubjectNotificationConfig.NotificationPriority) -> String {
+        switch priority {
+        case .low: return "arrow.down.circle"
+        case .normal: return "equal.circle"
+        case .high: return "arrow.up.circle"
+        case .critical: return "exclamationmark.triangle.fill"
         }
     }
 }

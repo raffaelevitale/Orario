@@ -117,6 +117,7 @@ struct CustomSchedulingView: View {
                     withAnimation(.spring(response: 0.3)) {
                         selectedTab = tab
                     }
+                    HapticManager.shared.selection()
                 }) {
                     VStack(spacing: 8) {
                         Image(systemName: tab.icon)
@@ -473,6 +474,7 @@ struct DayScheduleDetailCard: View {
     let day: DaySchedule.DayOfWeek
     @State private var schedule: DaySchedule
     let onScheduleChange: (DaySchedule) -> Void
+    @EnvironmentObject var dataManager: DataManager
     
     @State private var isExpanded = false
     
@@ -482,6 +484,35 @@ struct DayScheduleDetailCard: View {
         self.onScheduleChange = onScheduleChange
     }
     
+    private var dayColor: Color {
+        switch day {
+        case .monday: return .blue
+        case .tuesday: return .purple
+        case .wednesday: return .green
+        case .thursday: return .orange
+        case .friday: return .red
+        case .saturday: return .cyan
+        case .sunday: return .pink
+        }
+    }
+    
+    private var lessonsForDay: [Lesson] {
+        let dayIndex = dayToDayOfWeek(day)
+        return dataManager.getLessonsForDay(dayIndex).filter { $0.subject != "Intervallo" }
+    }
+    
+    private func dayToDayOfWeek(_ day: DaySchedule.DayOfWeek) -> Int {
+        switch day {
+        case .monday: return 1
+        case .tuesday: return 2
+        case .wednesday: return 3
+        case .thursday: return 4
+        case .friday: return 5
+        case .saturday: return 6
+        case .sunday: return 7
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -489,34 +520,50 @@ struct DayScheduleDetailCard: View {
                 withAnimation(.spring(response: 0.3)) {
                     isExpanded.toggle()
                 }
+                HapticManager.shared.impact(style: .light)
             }) {
-                HStack {
-                    Circle()
-                        .fill(schedule.isEnabled ? Color.green : Color.gray.opacity(0.5))
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Text(String(day.rawValue.prefix(1)))
-                                .font(.caption)
+                HStack(spacing: 12) {
+                    // Day icon with color
+                    ZStack {
+                        Circle()
+                            .fill(schedule.isEnabled ? dayColor : Color.gray.opacity(0.3))
+                            .frame(width: 44, height: 44)
+                        
+                        VStack(spacing: 2) {
+                            Text(String(day.rawValue.prefix(3).uppercased()))
+                                .font(.caption2)
                                 .fontWeight(.bold)
-                                .foregroundColor(.white)
-                        )
+                            
+                            if !lessonsForDay.isEmpty {
+                                Text("\(lessonsForDay.count)")
+                                    .font(.caption2)
+                            }
+                        }
+                        .foregroundColor(.white)
+                    }
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(day.rawValue)
                             .font(.body)
-                            .fontWeight(.medium)
+                            .fontWeight(.semibold)
                             .foregroundColor(.white)
                         
-                        Text(statusText)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                        if !lessonsForDay.isEmpty {
+                            Text("\(lessonsForDay.count) lezioni • \(statusText)")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                        } else {
+                            Text(statusText)
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
                     }
                     
                     Spacer()
                     
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.white.opacity(0.6))
-                        .font(.caption)
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .foregroundColor(dayColor.opacity(0.8))
+                        .font(.title3)
                 }
                 .padding()
             }
@@ -526,42 +573,107 @@ struct DayScheduleDetailCard: View {
                     .background(.white.opacity(0.2))
                 
                 VStack(spacing: 16) {
+                    // Materie del giorno
+                    if !lessonsForDay.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "books.vertical.fill")
+                                    .foregroundColor(dayColor)
+                                Text("Materie di \(day.rawValue)")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(lessonsForDay, id: \.id) { lesson in
+                                        HStack(spacing: 6) {
+                                            Circle()
+                                                .fill(Color.fromHex(lesson.color) ?? .blue)
+                                                .frame(width: 8, height: 8)
+                                            
+                                            Text(lesson.subject)
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.fromHex(lesson.color)?.opacity(0.2) ?? .blue.opacity(0.2))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(dayColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        
+                        Divider()
+                            .background(.white.opacity(0.1))
+                    }
+                    
                     // Enable toggle
                     HStack {
-                        Text("Attivo")
+                        Image(systemName: schedule.isEnabled ? "bell.badge.fill" : "bell.slash.fill")
+                            .foregroundColor(dayColor)
+                        Text("Notifiche attive")
                             .font(.subheadline)
+                            .fontWeight(.medium)
                             .foregroundColor(.white)
                         Spacer()
                         Toggle("", isOn: $schedule.isEnabled)
-                            .tint(.green)
+                            .tint(dayColor)
+                            .onChange(of: schedule.isEnabled) { _ in
+                                HapticManager.shared.selection()
+                            }
                     }
                     
                     if schedule.isEnabled {
+                        Divider()
+                            .background(.white.opacity(0.1))
+                        
                         // Active hours
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Orario Attivo")
-                                .font(.subheadline)
-                                .foregroundColor(.white)
+                            HStack {
+                                Image(systemName: "clock.fill")
+                                    .foregroundColor(dayColor)
+                                Text("Orario Attivo")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                            }
                             
                             HStack {
                                 DatePicker("Inizio", selection: $schedule.startTime, displayedComponents: [.hourAndMinute])
                                     .datePickerStyle(.compact)
-                                    .tint(.white)
+                                    .tint(dayColor)
                                 
                                 Text("-")
                                     .foregroundColor(.white)
+                                    .fontWeight(.bold)
                                 
                                 DatePicker("Fine", selection: $schedule.endTime, displayedComponents: [.hourAndMinute])
                                     .datePickerStyle(.compact)
-                                    .tint(.white)
+                                    .tint(dayColor)
                             }
                         }
+                        .padding(12)
+                        .background(dayColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        
+                        Divider()
+                            .background(.white.opacity(0.1))
                         
                         // Quiet hours
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
+                                Image(systemName: "moon.fill")
+                                    .foregroundColor(.indigo)
                                 Text("Ore di Silenzio")
                                     .font(.subheadline)
+                                    .fontWeight(.medium)
                                     .foregroundColor(.white)
                                 
                                 Spacer()
@@ -574,6 +686,7 @@ struct DayScheduleDetailCard: View {
                                         } else {
                                             schedule.quietHours = nil
                                         }
+                                        HapticManager.shared.selection()
                                     }
                                 ))
                                 .tint(.indigo)
@@ -583,29 +696,43 @@ struct DayScheduleDetailCard: View {
                                 HStack {
                                     DatePicker("Da", selection: Binding(
                                         get: { schedule.quietHours?.startTime ?? Date() },
-                                        set: { schedule.quietHours?.startTime = $0 }
+                                        set: { 
+                                            schedule.quietHours?.startTime = $0
+                                            HapticManager.shared.impact(style: .light)
+                                        }
                                     ), displayedComponents: [.hourAndMinute])
                                     .datePickerStyle(.compact)
-                                    .tint(.white)
+                                    .tint(.indigo)
                                     
                                     Text("-")
                                         .foregroundColor(.white)
+                                        .fontWeight(.bold)
                                     
                                     DatePicker("A", selection: Binding(
                                         get: { schedule.quietHours?.endTime ?? Date() },
-                                        set: { schedule.quietHours?.endTime = $0 }
+                                        set: { 
+                                            schedule.quietHours?.endTime = $0
+                                            HapticManager.shared.impact(style: .light)
+                                        }
                                     ), displayedComponents: [.hourAndMinute])
                                     .datePickerStyle(.compact)
-                                    .tint(.white)
+                                    .tint(.indigo)
                                 }
                             }
                         }
+                        .padding(12)
+                        .background(.indigo.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
                 .padding()
             }
         }
         .background(.ultraThinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(schedule.isEnabled ? dayColor.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1.5)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .onChange(of: schedule) { newSchedule in
             onScheduleChange(newSchedule)

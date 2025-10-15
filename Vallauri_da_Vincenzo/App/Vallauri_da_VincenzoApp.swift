@@ -12,6 +12,7 @@ import Combine
 @main
 struct Vallauri_da_Vincenzo: App {
     @StateObject private var dataManager = DataManager()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init() {
         // Richiedi permessi notifiche
@@ -23,9 +24,15 @@ struct Vallauri_da_Vincenzo: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(dataManager)
-                .preferredColorScheme(.dark) // Per il Liquid Glass effect
+            if hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(dataManager)
+                    .preferredColorScheme(.dark)
+            } else {
+                OnboardingView()
+                    .environmentObject(dataManager)
+                    .preferredColorScheme(.dark)
+            }
         }
     }
 

@@ -55,6 +55,10 @@ struct ContentView: View {
         }
         .onChange(of: settingsManager.isCompactNavigation) { _ in
             updateNavigationAppearance()
+            setupTabBarAppearance() // Aggiorna anche la tab bar
+        }
+        .onChange(of: selectedTab) { _ in
+            HapticManager.shared.selection()
         }
         .onChange(of: settingsManager.backgroundColor) { _ in
             // Forza refresh quando cambia il background
@@ -77,6 +81,18 @@ struct ContentView: View {
     }
     
     private func setupLiveActivities() {
+        // TEMPORANEAMENTE DISABILITATO
+        // Le Live Activities richiedono iOS 16.1+ e Widget Extension configurato
+        // Errore: "unsupportedTarget" indica che il target non supporta Live Activities
+        
+        #if DEBUG
+        print("⚠️ Live Activities disabilitate - richiede configurazione avanzata")
+        print("   Vedi LIVE_ACTIVITIES_SETUP.md per istruzioni complete")
+        #endif
+        
+        return
+        
+        /* CODICE ORIGINALE - DA RIABILITARE DOPO CONFIGURAZIONE
         // Controllo iniziale delle Live Activities
         dataManager.checkAndManageLiveActivities()
         
@@ -84,12 +100,51 @@ struct ContentView: View {
         liveActivityTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             dataManager.checkAndManageLiveActivities()
         }
+        */
     }
     
     private func setupTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithTransparentBackground()
         appearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        
+        // Configurazione modalità compatta
+        if settingsManager.isCompactNavigation {
+            // Icone più piccole senza testo
+            let itemAppearance = UITabBarItemAppearance()
+            
+            // Nascondi il testo
+            itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.clear, .font: UIFont.systemFont(ofSize: 0)]
+            itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.clear, .font: UIFont.systemFont(ofSize: 0)]
+            
+            // Ridimensiona le icone (offset per centrarle meglio)
+            itemAppearance.normal.iconColor = .white.withAlphaComponent(0.6)
+            itemAppearance.selected.iconColor = .white
+            
+            // Applica l'aspetto agli item
+            appearance.stackedLayoutAppearance = itemAppearance
+            appearance.inlineLayoutAppearance = itemAppearance
+            appearance.compactInlineLayoutAppearance = itemAppearance
+        } else {
+            // Modalità normale con testo
+            let itemAppearance = UITabBarItemAppearance()
+            
+            itemAppearance.normal.titleTextAttributes = [
+                .foregroundColor: UIColor.white.withAlphaComponent(0.6),
+                .font: UIFont.systemFont(ofSize: 10)
+            ]
+            itemAppearance.selected.titleTextAttributes = [
+                .foregroundColor: UIColor.white,
+                .font: UIFont.systemFont(ofSize: 10, weight: .semibold)
+            ]
+            
+            itemAppearance.normal.iconColor = .white.withAlphaComponent(0.6)
+            itemAppearance.selected.iconColor = .white
+            
+            appearance.stackedLayoutAppearance = itemAppearance
+            appearance.inlineLayoutAppearance = itemAppearance
+            appearance.compactInlineLayoutAppearance = itemAppearance
+        }
 
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance

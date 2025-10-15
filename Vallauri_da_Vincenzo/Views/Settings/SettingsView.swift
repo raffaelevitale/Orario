@@ -331,12 +331,21 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             SectionHeaderView(title: "Aspetto", icon: "paintbrush.fill")
             
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
                 // Background Color Selection
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Colore di sfondo")
-                        .font(.headline)
-                        .foregroundColor(.white)
+                    HStack {
+                        Image(systemName: "circle.lefthalf.filled")
+                            .foregroundColor(.blue)
+                            .frame(width: 32)
+                        
+                        Text("Colore di sfondo")
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top)
                     
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
                         ForEach(BackgroundColor.allCases, id: \.self) { color in
@@ -346,13 +355,15 @@ struct SettingsView: View {
                             ) {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     settingsManager.backgroundColor = color
+                                    HapticManager.shared.selection()
                                 }
                             }
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom)
                 }
             }
-            .padding()
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }

@@ -119,25 +119,25 @@ struct WeeklyPlannerView: View {
             let stats = plannerManager.getTasksCountForWeek(plannerManager.selectedWeekOffset)
             
             HStack(spacing: 12) {
-                StatCard(
+                PlannerStatCard(
                     title: "Totali", 
                     value: "\(stats.total)", 
                     color: .blue,
                     icon: "doc.text"
                 )
-                StatCard(
+                PlannerStatCard(
                     title: "Completati", 
                     value: "\(stats.completed)", 
                     color: .green,
                     icon: "checkmark.circle"
                 )
-                StatCard(
+                PlannerStatCard(
                     title: "In attesa", 
                     value: "\(stats.pending)", 
                     color: .orange,
                     icon: "clock"
                 )
-                StatCard(
+                PlannerStatCard(
                     title: "In ritardo", 
                     value: "\(stats.overdue)", 
                     color: .red,
@@ -227,7 +227,7 @@ struct WeeklyPlannerView: View {
                 let dayTasks = plannerManager.getTasksForDay(selectedDate)
                 
                 if dayTasks.isEmpty {
-                    EmptyStateView(
+                    PlannerEmptyStateView(
                         icon: "calendar.badge.plus",
                         title: "Nessun compito",
                         subtitle: "Non ci sono compiti per questa data"
@@ -315,7 +315,7 @@ struct WeeklyPlannerView: View {
 
 // MARK: - Supporting Views
 
-struct StatCard: View {
+struct PlannerStatCard: View {
     let title: String
     let value: String
     let color: Color
@@ -467,7 +467,13 @@ struct CompactTaskView: View {
             HStack(spacing: 12) {
                 // Completion checkbox
                 Button(action: {
+                    let wasCompleted = task.isCompleted
                     plannerManager.toggleTaskCompletion(task)
+                    if !wasCompleted {
+                        HapticManager.shared.taskCompleted()
+                    } else {
+                        HapticManager.shared.impact(style: .light)
+                    }
                 }) {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.title3)
@@ -641,7 +647,7 @@ struct TaskCardView: View {
     }
 }
 
-struct EmptyStateView: View {
+struct PlannerEmptyStateView: View {
     let icon: String
     let title: String
     let subtitle: String

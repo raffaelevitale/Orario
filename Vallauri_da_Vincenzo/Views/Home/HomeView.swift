@@ -101,6 +101,15 @@ struct HomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(.dark)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SearchView()) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.title3)
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
             .onReceive(timer) { _ in
                 currentTime = Date()
                 // Forza aggiornamento del DataManager per aggiornare la UI

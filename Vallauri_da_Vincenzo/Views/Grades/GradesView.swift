@@ -96,7 +96,16 @@ struct GradesView: View {
             
             Spacer()
             
-            Button(action: { showingAddGrade = true }) {
+            NavigationLink(destination: StatisticsView()) {
+                Image(systemName: "chart.xyaxis.line")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+            }
+            
+            Button(action: { 
+                HapticManager.shared.impact(style: .light)
+                showingAddGrade = true 
+            }) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.white)
