@@ -435,33 +435,13 @@ struct GradesView: View {
     }
     
     private var emptyStateView: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 25)
-                .fill(.ultraThinMaterial)
-                .frame(height: 200)
-            
-            VStack(spacing: 15) {
-                Image(systemName: "chart.bar.doc.horizontal")
-                    .font(.system(size: 48))
-                    .foregroundColor(.white.opacity(0.6))
-                
-                Text("Nessun voto inserito")
-                    .font(.title3)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                
-                Text("Tocca + per aggiungere il tuo primo voto")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                
-                Button("Aggiungi Voto") {
-                    showingAddGrade = true
-                }
-                .buttonStyle(.borderedProminent)
-                .foregroundColor(.white)
-            }
-        }
+        EmptyStateView(
+            icon: "chart.bar.doc.horizontal",
+            title: "Nessun voto inserito",
+            message: "Inizia ad aggiungere i tuoi voti per monitorare i progressi e calcolare le medie",
+            actionTitle: "Aggiungi Voto",
+            action: { showingAddGrade = true }
+        )
         .padding(.top, 50)
     }
 }

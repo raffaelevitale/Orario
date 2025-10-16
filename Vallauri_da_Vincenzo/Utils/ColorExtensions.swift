@@ -209,24 +209,6 @@ extension View {
     }
 }
 
-// MARK: - Loading State
-
-struct LoadingView: View {
-    var text: String = "Caricamento..."
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(1.5)
-            
-            Text(text)
-                .foregroundColor(.white.opacity(0.7))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 // MARK: - Empty State
 
 struct EmptyStateView: View {

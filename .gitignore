@@ -94,3 +94,23 @@ iOSInjectionProject/
 # macOS
 .DS_Store
 .expo/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+*.egg-info/
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+*.swp
+*.coffee
+
+# Extracted data (regenerate from scripts)
+scripts/orari_tutte_classi.json
+orari_classi/

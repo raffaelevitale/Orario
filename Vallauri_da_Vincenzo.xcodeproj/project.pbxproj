@@ -55,6 +55,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		511A315C2EA0D12500D0B748 /* Exceptions for "Vallauri_da_Vincenzo" folder in "ScheduleWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/orari_tutte_classi.json,
+			);
+			target = 514BB3732E854C65006DBB1C /* ScheduleWidgetExtension */;
+		};
 		514BB3892E854C68006DBB1C /* Exceptions for "ScheduleWidget" folder in "ScheduleWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -67,6 +74,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5124D33A2E83F1B700E75FDF /* Vallauri_da_Vincenzo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				511A315C2EA0D12500D0B748 /* Exceptions for "Vallauri_da_Vincenzo" folder in "ScheduleWidgetExtension" target */,
+			);
 			path = Vallauri_da_Vincenzo;
 			sourceTree = "<group>";
 		};

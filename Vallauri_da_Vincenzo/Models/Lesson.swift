@@ -50,6 +50,16 @@ struct Lesson: Identifiable, Codable {
 
         return Int(end.timeIntervalSince(start) / 60) // in minuti
     }
+    
+    // Determina se questa è un intervallo
+    var isBreak: Bool {
+        return subject.lowercased() == "intervallo" || subject.uppercased() == "INTERVALLO"
+    }
+    
+    // Determina se la lezione ha informazioni incomplete
+    var hasIncompleteInfo: Bool {
+        return teacher.isEmpty || classroom.isEmpty || subject.isEmpty
+    }
 
     static let sampleData: [Lesson] = [
         //LUNEDI

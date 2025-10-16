@@ -13,6 +13,7 @@ class SettingsManager: ObservableObject {
     @Published var enableLiveActivities: Bool = true
     @Published var enableDailyNotification: Bool = true
     @Published var enableLessonReminders: Bool = true
+    @Published var selectedClass: String = "" // Classe selezionata dall'utente
     @Published var dailyNotificationTime: Date = {
         let calendar = Calendar.current
         return calendar.date(from: DateComponents(hour: 7, minute: 30)) ?? Date()
@@ -38,6 +39,7 @@ class SettingsManager: ObservableObject {
         userDefaults.set(enableLiveActivities, forKey: "enableLiveActivities")
         userDefaults.set(enableDailyNotification, forKey: "enableDailyNotification")
         userDefaults.set(enableLessonReminders, forKey: "enableLessonReminders")
+        userDefaults.set(selectedClass, forKey: "selectedClass")
         userDefaults.set(dailyNotificationTime, forKey: "dailyNotificationTime")
         
         // Salva anche le configurazioni avanzate
@@ -65,6 +67,7 @@ class SettingsManager: ObservableObject {
             enableLiveActivities = userDefaults.bool(forKey: "enableLiveActivities")
             enableDailyNotification = userDefaults.bool(forKey: "enableDailyNotification")
             enableLessonReminders = userDefaults.bool(forKey: "enableLessonReminders")
+            selectedClass = userDefaults.string(forKey: "selectedClass") ?? ""
         }
         
         if let savedTime = userDefaults.object(forKey: "dailyNotificationTime") as? Date {
@@ -217,6 +220,7 @@ struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var dataManager: DataManager
     @State private var showingResetAlert = false
+    @State private var showingOnboarding = false
     
     var body: some View {
         NavigationView {
@@ -236,6 +240,9 @@ struct SettingsView: View {
                         
                         // Appearance Settings
                         appearanceSection
+                        
+                        // Class Selection
+                        classSelectionSection
                         
                         // Navigation Settings
                         navigationSection
@@ -366,6 +373,54 @@ struct SettingsView: View {
             }
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+    
+    // MARK: - Class Selection Section
+    private var classSelectionSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionHeaderView(title: "La Tua Classe", icon: "person.2.fill")
+            
+            NavigationLink(destination: ClassSelectionView(selectedClass: $settingsManager.selectedClass)
+                .environmentObject(dataManager)
+                .environmentObject(settingsManager)
+                .onDisappear {
+                    // Ricarica l'orario quando cambia la classe
+                    if !settingsManager.selectedClass.isEmpty {
+                        dataManager.selectedClass = settingsManager.selectedClass
+                        dataManager.loadLessonsForClass(settingsManager.selectedClass)
+                    }
+                }
+            ) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 15) {
+                        Image(systemName: settingsManager.selectedClass.isEmpty ? "person.crop.circle.badge.questionmark" : "person.crop.circle.badge.checkmark")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(settingsManager.selectedClass.isEmpty ? "Nessuna classe selezionata" : settingsManager.selectedClass)
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                            
+                            Text(settingsManager.selectedClass.isEmpty ? "Tocca per selezionare" : "Tocca per cambiare")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .padding()
+                }
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
         }
     }
     
@@ -701,6 +756,37 @@ struct SettingsView: View {
             SectionHeaderView(title: "Gestione dati", icon: "externaldrive.fill")
             
             VStack(spacing: 0) {
+                // Rivedi onboarding
+                Button(action: { showingOnboarding = true }) {
+                    HStack {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Rivedi introduzione")
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                            
+                            Text("Mostra di nuovo la schermata iniziale")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .padding()
+                }
+                
+                Divider()
+                    .background(.white.opacity(0.2))
+                
+                // Reset dati
                 Button(action: { showingResetAlert = true }) {
                     HStack {
                         Image(systemName: "trash.fill")
@@ -726,9 +812,9 @@ struct SettingsView: View {
                     }
                     .padding()
                 }
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
         .alert("Ripristina dati", isPresented: $showingResetAlert) {
             Button("Elimina tutto", role: .destructive) {
@@ -738,6 +824,11 @@ struct SettingsView: View {
             Button("Annulla", role: .cancel) { }
         } message: {
             Text("Questa azione eliminerà definitivamente tutti i voti e gli eventi salvati. Non può essere annullata.")
+        }
+        .sheet(isPresented: $showingOnboarding) {
+            OnboardingView()
+                .environmentObject(dataManager)
+                .environmentObject(settingsManager)
         }
     }
     

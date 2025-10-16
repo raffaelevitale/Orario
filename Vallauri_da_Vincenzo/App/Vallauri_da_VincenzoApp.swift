@@ -12,6 +12,7 @@ import Combine
 @main
 struct Vallauri_da_Vincenzo: App {
     @StateObject private var dataManager = DataManager()
+    @StateObject private var settingsManager = SettingsManager()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init() {
@@ -27,10 +28,12 @@ struct Vallauri_da_Vincenzo: App {
             if hasCompletedOnboarding {
                 ContentView()
                     .environmentObject(dataManager)
+                    .environmentObject(settingsManager)
                     .preferredColorScheme(.dark)
             } else {
                 OnboardingView()
                     .environmentObject(dataManager)
+                    .environmentObject(settingsManager)
                     .preferredColorScheme(.dark)
             }
         }

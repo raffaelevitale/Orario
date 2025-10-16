@@ -212,14 +212,14 @@ struct HomeView: View {
                 }
             }
             .padding()
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(.green.opacity(0.5), lineWidth: 2)
             }
+            .shadow(color: .green.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BounceButtonStyle())
     }
     
     func nextLessonCard(_ lesson: Lesson) -> some View {
@@ -266,12 +266,12 @@ struct HomeView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
         .overlay {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(.orange.opacity(0.5), lineWidth: 2)
         }
+        .shadow(color: .orange.opacity(0.3), radius: 10, x: 0, y: 5)
     }
     
     var noLessonsCard: some View {
@@ -290,8 +290,8 @@ struct HomeView: View {
                 .foregroundColor(.white.opacity(0.8))
         }
         .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
+        .shadow(color: .blue.opacity(0.2), radius: 10, x: 0, y: 5)
     }
     
     // MARK: - Next School Day View
@@ -317,8 +317,8 @@ struct HomeView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
+        .shadow(color: .blue.opacity(0.2), radius: 10, x: 0, y: 5)
     }
     
     // MARK: - Today Tasks View
@@ -336,14 +336,7 @@ struct HomeView: View {
                 
                 Spacer()
                 
-                Text("\(todayTasks.count)")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.orange)
-                    .clipShape(Capsule())
+                BadgeView(count: todayTasks.count, color: .orange)
             }
             
             VStack(spacing: 12) {
@@ -363,8 +356,8 @@ struct HomeView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
+        .shadow(color: .orange.opacity(0.2), radius: 10, x: 0, y: 5)
     }
     
     // MARK: - Quick Stats View
@@ -376,25 +369,28 @@ struct HomeView: View {
                 .foregroundColor(.white)
             
             HStack(spacing: 16) {
-                HomeStatCard(
+                StatCardView(
                     title: "Eventi totali",
                     value: "\(plannerManager.totalTasks)",
                     color: .blue,
-                    icon: "calendar.badge.plus"
+                    icon: "calendar.badge.plus",
+                    backgroundColor: settingsManager.backgroundColor.colors.first ?? .blue
                 )
                 
-                HomeStatCard(
+                StatCardView(
                     title: "Completati",
                     value: "\(plannerManager.completedTasks)",
                     color: .green,
-                    icon: "checkmark.circle.fill"
+                    icon: "checkmark.circle.fill",
+                    backgroundColor: settingsManager.backgroundColor.colors.first ?? .blue
                 )
                 
-                HomeStatCard(
+                StatCardView(
                     title: "In scadenza",
                     value: "\(plannerManager.overdueTasks)",
                     color: .red,
-                    icon: "exclamationmark.triangle.fill"
+                    icon: "exclamationmark.triangle.fill",
+                    backgroundColor: settingsManager.backgroundColor.colors.first ?? .blue
                 )
             }
         }
@@ -497,35 +493,6 @@ struct TaskRowView: View {
                 .foregroundColor(task.type.color)
         }
         .padding(.vertical, 8)
-    }
-}
-
-struct HomeStatCard: View {
-    let title: String
-    let value: String
-    let color: Color
-    let icon: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

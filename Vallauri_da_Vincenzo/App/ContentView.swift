@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
-    @StateObject private var settingsManager = SettingsManager()
+    @EnvironmentObject var settingsManager: SettingsManager
     @State private var liveActivityTimer: Timer?
     @State private var selectedTab = 0
 
@@ -43,8 +43,8 @@ struct ContentView: View {
                 }
                 .tag(4)
         }
-        .environmentObject(settingsManager)
         .onAppear {
+            dataManager.loadInitialData()
             setupNotifications()
             setupTabBarAppearance()
             setupLiveActivities()

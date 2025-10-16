@@ -16,9 +16,9 @@ struct GradeCardView: View {
     
     var body: some View {
         ZStack {
-            // Background con stile simile a LessonCardView
+            // Background con glassmorphism
             RoundedRectangle(cornerRadius: 25)
-                .fill(.ultraThinMaterial)
+                .fill(.clear)
                 .overlay {
                     RoundedRectangle(cornerRadius: 25)
                         .stroke(
@@ -30,6 +30,10 @@ struct GradeCardView: View {
                             lineWidth: 1.5
                         )
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(.ultraThinMaterial)
+                )
                 .shadow(color: Color(hex: grade.color).opacity(0.3), radius: 10, x: 0, y: 5)
             
             HStack {
@@ -54,7 +58,7 @@ struct GradeCardView: View {
                         
                         Spacer()
                         
-                        // Voto con sfondo colorato
+                        // Voto con sfondo colorato e shimmer effect
                         VStack(spacing: 2) {
                             Text(grade.formattedValue)
                                 .font(.title2)
@@ -69,6 +73,7 @@ struct GradeCardView: View {
                         .padding(.vertical, 8)
                         .background(Color(hex: grade.gradeColor))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: Color(hex: grade.gradeColor).opacity(0.4), radius: 5, x: 0, y: 2)
                     }
                     
                     // Descrizione del voto
@@ -90,17 +95,11 @@ struct GradeCardView: View {
                         Spacer()
                         
                         // Badge con il tipo di valutazione
-                        HStack(spacing: 4) {
-                            Image(systemName: getIconForDescription(grade.description))
-                                .font(.caption2)
-                            Text(getShortType(from: grade.description))
-                                .font(.caption2)
-                        }
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Capsule())
+                        BadgeView(
+                            icon: getIconForDescription(grade.description),
+                            text: getShortType(from: grade.description),
+                            color: Color(hex: grade.color)
+                        )
                     }
                 }
                 .padding(.leading, 4)
@@ -192,7 +191,7 @@ struct SubjectAverageCardView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
-                .fill(.thickMaterial)
+                .fill(.clear)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(
@@ -204,6 +203,10 @@ struct SubjectAverageCardView: View {
                             lineWidth: 2
                         )
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.thickMaterial)
+                )
                 .shadow(color: Color(hex: subjectGrades.color).opacity(0.4), radius: 8, x: 0, y: 4)
             
             HStack {
@@ -218,23 +221,23 @@ struct SubjectAverageCardView: View {
                         .foregroundColor(.white.opacity(0.8))
                     
                     HStack(spacing: 8) {
-                        Text("\(subjectGrades.gradeCount) vot\(subjectGrades.gradeCount == 1 ? "o" : "i")")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
+                        BadgeView(
+                            icon: "number",
+                            text: "\(subjectGrades.gradeCount) vot\(subjectGrades.gradeCount == 1 ? "o" : "i")",
+                            color: Color(hex: subjectGrades.color)
+                        )
                         
-                        Circle()
-                            .fill(.white.opacity(0.3))
-                            .frame(width: 3, height: 3)
-                        
-                        Text("Media: \(subjectGrades.formattedAverage)")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
+                        BadgeView(
+                            icon: "chart.line.uptrend.xyaxis",
+                            text: "Media: \(subjectGrades.formattedAverage)",
+                            color: Color(hex: subjectGrades.color)
+                        )
                     }
                 }
                 
                 Spacer()
                 
-                // Media grande
+                // Media grande con shimmer
                 VStack {
                     Text(subjectGrades.formattedAverage)
                         .font(.title)
@@ -250,6 +253,7 @@ struct SubjectAverageCardView: View {
                 .padding(.vertical, 8)
                 .background(Color(hex: subjectGrades.color).opacity(0.3))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color(hex: subjectGrades.color).opacity(0.3), radius: 5, x: 0, y: 2)
             }
             .padding()
         }

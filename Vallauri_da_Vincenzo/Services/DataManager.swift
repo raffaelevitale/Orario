@@ -27,26 +27,65 @@ struct ScheduleWidgetAttributes: ActivityAttributes {
 class DataManager: ObservableObject {
     @Published var lessons: [Lesson] = []
     @Published var grades: [Grade] = []
+    @Published var selectedClass: String = ""
     
     private let lessonsKey = "SavedLessons"
     private let gradesKey = "SavedGrades"
+    private let scheduleLoader = ScheduleLoader.shared
     
     init() {
+        // Non caricare nulla qui per evitare warning StateObject
+    }
+    
+    // Metodo da chiamare dopo che DataManager è installato su una View
+    func loadInitialData() {
+        // Carica la classe selezionata dalle impostazioni
+        if let savedClass = UserDefaults.standard.string(forKey: "selectedClass"), !savedClass.isEmpty {
+            selectedClass = savedClass
+        }
+        
         loadLessons()
         loadGrades()
         
         if lessons.isEmpty {
-            // Combina lezioni e intervalli, poi ordina per giorno e orario
-            lessons = (Lesson.sampleData + Lesson.breaks).sorted { first, second in
-                if first.dayOfWeek == second.dayOfWeek {
-                    return first.startTime < second.startTime
-                } else {
-                    return first.dayOfWeek < second.dayOfWeek
+            // Se non ci sono lezioni salvate, usa sample data o carica dalla classe selezionata
+            if !selectedClass.isEmpty {
+                loadLessonsForClass(selectedClass)
+            } else {
+                // Combina lezioni e intervalli, poi ordina per giorno e orario
+                lessons = (Lesson.sampleData + Lesson.breaks).sorted { first, second in
+                    if first.dayOfWeek == second.dayOfWeek {
+                        return first.startTime < second.startTime
+                    } else {
+                        return first.dayOfWeek < second.dayOfWeek
+                    }
                 }
             }
             // Salva i dati iniziali per il widget
             saveLessons()
         }
+    }
+    
+    // Carica le lezioni per una classe specifica
+    func loadLessonsForClass(_ className: String) {
+        guard !className.isEmpty else { return }
+        
+        let loadedLessons = scheduleLoader.getLessonsForClass(className)
+        
+        // Ordina per giorno e orario
+        lessons = loadedLessons.sorted { first, second in
+            if first.dayOfWeek == second.dayOfWeek {
+                return first.startTime < second.startTime
+            } else {
+                return first.dayOfWeek < second.dayOfWeek
+            }
+        }
+        
+        selectedClass = className
+        UserDefaults.standard.set(className, forKey: "selectedClass")
+        saveLessons()
+        
+        print("✅ Caricate \(lessons.count) lezioni per la classe \(className)")
         
         // Programma le notifiche quando vengono caricate le lezioni
         scheduleNotificationsIfNeeded()

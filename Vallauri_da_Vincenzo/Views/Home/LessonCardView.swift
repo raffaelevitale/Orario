@@ -28,22 +28,18 @@ struct LessonCardView: View {
     var body: some View {
         ZStack {
             // Background with different styles for lessons and breaks
-            if lesson.subject == "Intervallo" {
-                // Break card style
-                RoundedRectangle(cornerRadius: 25)
-                    .fill(.thinMaterial)
+            if lesson.isBreak {
+                // Break card style - molto più discreto
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white.opacity(0.05))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 25)
+                        RoundedRectangle(cornerRadius: 20)
                             .stroke(
-                                LinearGradient(
-                                    colors: [.gray.opacity(0.4), .clear],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
+                                Color.gray.opacity(0.2),
+                                lineWidth: 1
                             )
                     }
-                    .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 3)
+                    .shadow(color: .clear, radius: 0)
             } else {
                 // Lesson card style with current lesson highlighting
                 RoundedRectangle(cornerRadius: 25)
@@ -86,23 +82,26 @@ struct LessonCardView: View {
                                 }
                         }
                         
-                        // Next lesson indicator
+                        // Next lesson indicator - più prominente
                         if isNextLesson && !isCurrentLesson {
                             VStack {
                                 HStack {
                                     Spacer()
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "clock.badge.checkmark")
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "clock.arrow.circlepath")
                                             .font(.caption)
-                                        Text("Prossima")
-                                            .font(.caption2)
                                             .fontWeight(.semibold)
+                                        Text("Prossima")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .textCase(.uppercase)
                                     }
-                                    .foregroundColor(Color(hex: lesson.color))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color(hex: lesson.color).opacity(0.2))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color(hex: lesson.color))
                                     .clipShape(Capsule())
+                                    .shadow(color: Color(hex: lesson.color).opacity(0.5), radius: 5, x: 0, y: 2)
                                     .padding(.top, 12)
                                     .padding(.trailing, 16)
                                 }
@@ -114,10 +113,10 @@ struct LessonCardView: View {
 
             HStack {
                 // Left accent bar (different for breaks and current lesson)
-                if lesson.subject == "Intervallo" {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(.gray.opacity(0.6))
-                        .frame(width: 4)
+                if lesson.isBreak {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.gray.opacity(0.3))
+                        .frame(width: 3)
                 } else {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color(hex: lesson.color))
@@ -128,15 +127,15 @@ struct LessonCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // Subject with current lesson indicator
                     HStack {
-                        if lesson.subject == "Intervallo" {
+                        if lesson.isBreak {
                             HStack(spacing: 6) {
                                 Image(systemName: "cup.and.saucer.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.gray)
-                                Text(lesson.subject)
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.gray)
+                                    .font(.callout)
+                                    .foregroundColor(.gray.opacity(0.6))
+                                Text(lesson.subject.uppercased())
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.gray.opacity(0.7))
                             }
                         } else {
                             HStack(spacing: 8) {
@@ -147,7 +146,14 @@ struct LessonCardView: View {
                                         .scaleEffect(1.1)
                                 }
                                 
-                                Text(lesson.subject)
+                                // Icona ? per lezioni incomplete
+                                if lesson.hasIncompleteInfo {
+                                    Image(systemName: "questionmark.circle.fill")
+                                        .font(.callout)
+                                        .foregroundColor(.orange.opacity(0.7))
+                                }
+                                
+                                Text(lesson.subject.isEmpty ? "Lezione" : lesson.subject)
                                     .font(.headline)
                                     .fontWeight(isCurrentLesson ? .bold : .semibold)
                                     .foregroundColor(.white)
@@ -167,15 +173,15 @@ struct LessonCardView: View {
                             .fontWeight(.medium)
                     }
                     .foregroundColor(
-                        lesson.subject == "Intervallo" ? 
-                            .gray : 
+                        lesson.isBreak ? 
+                            .gray.opacity(0.6) : 
                             (isCurrentLesson ? Color(hex: lesson.color) : .white.opacity(0.8))
                     )
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
-                        lesson.subject == "Intervallo" ? 
-                            Color.gray.opacity(0.2) : 
+                        lesson.isBreak ? 
+                            Color.gray.opacity(0.1) : 
                             (isCurrentLesson ? 
                                 Color(hex: lesson.color).opacity(0.2) : 
                                 Color.white.opacity(0.1)
@@ -184,7 +190,7 @@ struct LessonCardView: View {
                     .clipShape(Capsule())
 
                     // Teacher (only for lessons, not breaks)
-                    if lesson.subject != "Intervallo" && !lesson.teacher.isEmpty {
+                    if !lesson.isBreak && !lesson.teacher.isEmpty {
                         HStack {
                             Image(systemName: "person.circle")
                                 .font(.caption)
@@ -193,21 +199,34 @@ struct LessonCardView: View {
                                 .fontWeight(.medium)
                         }
                         .foregroundColor(.white.opacity(0.9))
+                    } else if !lesson.isBreak && lesson.teacher.isEmpty {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.orange.opacity(0.6))
+                            Text("Docente non specificato")
+                                .font(.caption)
+                                .italic()
+                                .foregroundColor(.white.opacity(0.6))
+                        }
                     }
 
                     // Classroom
-                    HStack {
-                        Image(systemName: "location.circle")
-                            .font(.caption)
-                        Text(lesson.classroom)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                    if !lesson.isBreak {
+                        HStack {
+                            Image(systemName: lesson.classroom.isEmpty ? "questionmark.circle" : "location.circle")
+                                .font(.caption)
+                            Text(lesson.classroom.isEmpty ? "Aula non specificata" : lesson.classroom)
+                                .font(.subheadline)
+                                .fontWeight(lesson.classroom.isEmpty ? .regular : .medium)
+                                .italic(lesson.classroom.isEmpty)
+                        }
+                        .foregroundColor(lesson.classroom.isEmpty ? .white.opacity(0.6) : .white.opacity(0.9))
                     }
-                    .foregroundColor(lesson.subject == "Intervallo" ? .gray.opacity(0.8) : .white.opacity(0.9))
 
                     // Duration badge and break activities with current lesson progress
                     HStack {
-                        if lesson.subject == "Intervallo" {
+                        if lesson.isBreak {
                             HStack(spacing: 4) {
                                 Image(systemName: "figure.walk")
                                     .font(.caption2)
@@ -215,7 +234,7 @@ struct LessonCardView: View {
                                     .font(.caption2)
                                     .fontWeight(.medium)
                             }
-                            .foregroundColor(.gray.opacity(0.7))
+                            .foregroundColor(.gray.opacity(0.5))
                         } else if isCurrentLesson {
                             HStack(spacing: 6) {
                                 Image(systemName: "waveform")
@@ -251,15 +270,15 @@ struct LessonCardView: View {
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundColor(
-                                lesson.subject == "Intervallo" ? 
-                                    .gray : 
+                                lesson.isBreak ? 
+                                    .gray.opacity(0.5) : 
                                     (isCurrentLesson ? Color(hex: lesson.color) : .white)
                             )
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(
-                                lesson.subject == "Intervallo" ? 
-                                    Color.gray.opacity(0.3) : 
+                                lesson.isBreak ? 
+                                    Color.gray.opacity(0.2) : 
                                     (isCurrentLesson ? 
                                         Color(hex: lesson.color).opacity(0.3) : 
                                         Color(hex: lesson.color).opacity(0.8)
@@ -294,7 +313,7 @@ struct LessonCardView: View {
             impactFeedback.impactOccurred()
 
             // Different actions for lessons and breaks
-            if lesson.subject == "Intervallo" {
+            if lesson.isBreak {
                 print("Break tapped: \(lesson.classroom)")
             } else {
                 // Avvia Live Activity per questa lezione

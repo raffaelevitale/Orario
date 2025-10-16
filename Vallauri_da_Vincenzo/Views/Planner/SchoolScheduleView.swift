@@ -152,6 +152,12 @@ struct SchoolScheduleView: View {
                         RoundedRectangle(cornerRadius: 20)
                             .stroke(.white.opacity(0.3), lineWidth: 1)
                     )
+                    .shadow(
+                        color: selectedDay == dayNumber ? .white.opacity(0.3) : .clear,
+                        radius: 10,
+                        x: 0,
+                        y: 5
+                    )
 
                 Text(dayName)
                     .font(.system(size: 16, weight: .medium))
@@ -159,6 +165,7 @@ struct SchoolScheduleView: View {
             }
             .contentShape(Rectangle())
         }
+        .buttonStyle(BounceButtonStyle())
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedDay)
     }
 
@@ -227,28 +234,11 @@ struct SchoolScheduleView: View {
     }
 
     private var emptyStateView: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 25)
-                .fill(.ultraThinMaterial)
-                .frame(height: 200)
-
-            VStack(spacing: 15) {
-                Image(systemName: "calendar.badge.exclamationmark")
-                    .font(.system(size: 50))
-                    .foregroundColor(.white.opacity(0.7))
-
-                Text("Nessuna lezione")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-
-                Text("Non ci sono lezioni programmate per questo giorno")
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-        }
+        EmptyStateView(
+            icon: "calendar.badge.exclamationmark",
+            title: "Nessuna lezione",
+            message: "Non ci sono lezioni programmate per questo giorno"
+        )
         .padding(.top, 50)
     }
 

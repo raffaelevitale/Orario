@@ -1,6 +1,24 @@
-# School Schedule App
+# 📚 Vallauri School Schedule App
 
-App iOS con widget per iPhone che mostra l'orario scolastico, notifiche avanzate e voti con sistema di gestione intelligente.
+App iOS completa con widget, notifiche intelligenti e sistema di gestione orari scolastici con estrazione automatica da PDF per l'Istituto Vallauri.
+
+## ✨ Novità v2.1
+
+### 🎯 Sistema di Estrazione Orari da PDF
+
+- ✅ **Estrazione Automatica**: Script Python per estrarre orari da PDF ufficiale
+- ✅ **81 Classi Supportate**: Tutti gli indirizzi del Vallauri (AFM, INF, ELT, MEC, LIC, TUR, MEN)
+- ✅ **2721+ Lezioni**: Database completo con docenti, aule e orari
+- ✅ **Gestione Celle Unite**: Supporto per blocchi orari multipli (lab, progetti)
+- ✅ **Selezione Classe Onboarding**: Ricerca naturale con filtri per anno
+- ✅ **Aggiornamenti Facili**: Rigenera JSON da nuovo PDF in pochi secondi
+
+### 📂 Riorganizzazione Progetto
+
+- ✅ **Cartella scripts/**: Script di estrazione e documentazione separati
+- ✅ **Pulizia Completa**: Rimossi file temporanei e duplicati
+- ✅ **.gitignore Aggiornato**: Prevenzione commit di file non necessari
+- ✅ **Documentazione Estesa**: README per ogni componente
 
 ## 🏗️ Architettura
 
@@ -22,12 +40,24 @@ App iOS con widget per iPhone che mostra l'orario scolastico, notifiche avanzate
 
 ### App principale:
 
-- ✅ Visualizzazione orario settimanale con design glassmorphism
-- ✅ Gestione voti con medie per materia e statistiche
-- ✅ Sistema notifiche avanzato multi-livello
-- ✅ Live Activities per lezioni in corso con tap integration
-- ✅ Weekly planner per gestione compiti
-- ✅ Impostazioni avanzate personalizzabili
+- ✅ **Selezione Classe Intelligente**: Onboarding con ricerca naturale (es. "5 inf", "prima informatica")
+- ✅ **81 Classi Vallauri**: Tutti gli orari estratti dal PDF ufficiale
+- ✅ **Visualizzazione orario settimanale** con design glassmorphism
+- ✅ **Gestione voti** con medie per materia e statistiche
+- ✅ **Sistema notifiche avanzato** multi-livello
+- ✅ **Live Activities** per lezioni in corso con tap integration
+- ✅ **Weekly planner** per gestione compiti
+- ✅ **Impostazioni avanzate** personalizzabili
+
+### Sistema di Estrazione Orari 📄:
+
+- ✅ **Script Python Automatico**: Estrae orari da PDF con pdfplumber
+- ✅ **Gestione Formato Vallauri**: Supporto caratteri doppiati ("55AA IINNFF")
+- ✅ **Celle Unite Verticali**: Gestione blocchi orari (lab 2+ ore)
+- ✅ **Intervalli Automatici**: Aggiunta automatica pause tra lezioni
+- ✅ **JSON Completo**: Database 740KB con tutte le classi
+- ✅ **Correzioni Manuali**: Sistema per fix personalizzati (es. 5A INF)
+- ✅ **Documentazione Completa**: README e guide nell'apposita cartella
 
 ### Sistema Notifiche Avanzato 🔔:
 
@@ -104,12 +134,36 @@ App iOS con widget per iPhone che mostra l'orario scolastico, notifiche avanzate
 - Xcode 15+
 - iOS 17+
 - Apple Developer Account (per App Groups)
+- **Python 3.8+** (per script estrazione orari)
 
 ### Configurazione:
 
 1. **App Groups**: Configurare `group.schedule.app` per tutti i target
 2. **Entitlements**: Verificare che tutti i target abbiano l'App Group
 3. **Certificates**: Assicurarsi che i profili di provisioning supportino App Groups
+4. **Script Python** (opzionale, per aggiornare orari):
+   ```bash
+   cd scripts
+   pip3 install -r requirements.txt
+   ```
+
+### Estrazione Orari da PDF:
+
+```bash
+# Vai nella cartella scripts
+cd scripts
+
+# Installa dipendenze
+pip3 install -r requirements.txt
+
+# Estrai orari da PDF
+python3 pdf_timetable_extractor.py orario_vallauri.pdf
+
+# Copia JSON generato nelle Resources dell'app
+cp orari_tutte_classi.json ../Vallauri_da_Vincenzo/Resources/
+```
+
+> 📖 Per informazioni dettagliate vedi `scripts/README.md`
 
 ### Build:
 
@@ -173,6 +227,22 @@ xcodebuild -project Vallauri_da_Vincenzo.xcodeproj -scheme watch_orarioExtension
 
 ## 📊 Struttura dati
 
+### AllClassesSchedule (Estrazione da PDF):
+
+```swift
+struct AllClassesSchedule {
+    let school: String           // "Istituto Vallauri"
+    let extractionDate: String   // Data estrazione
+    let totalClasses: Int        // 81
+    let classes: [String: ClassSchedule]
+}
+
+struct ClassSchedule {
+    let className: String        // "5A INF"
+    let lessons: [LessonJSON]    // Array lezioni complete
+}
+```
+
 ### Lesson (App principale):
 
 ```swift
@@ -185,6 +255,10 @@ struct Lesson {
     let startTime: String // "07:50"
     let endTime: String   // "08:50"
     let color: String     // "#ef5350"
+    
+    // Computed properties
+    var isBreak: Bool           // Controlla se è "INTERVALLO"
+    var hasIncompleteInfo: Bool // Controlla campi vuoti
 }
 ```
 
@@ -294,25 +368,65 @@ struct WidgetLesson {
 
 ### In Sviluppo:
 
-- [ ] **Notifiche Basate su Posizione**: Solo quando sei vicino a scuola
-- [ ] **Suoni Personalizzati**: Assegna suoni unici per materia
-- [ ] **Widget Configurazione**: Controllo rapido dalla home screen
-- [ ] **Integrazione Calendario**: Sincronizzazione con calendario di sistema
-- [ ] **Machine Learning Avanzato**: Predizioni più accurate dei pattern
+- [ ] **Widget Configurabile**: Selezione classe direttamente dal widget
+- [ ] **Export/Import Orario**: Condivisione configurazioni personalizzate
+- [ ] **Notifiche Cambio Aula**: Alert automatici per variazioni
+
+### Sistema Notifiche (già completato in v2.0):
+
+- [x] **Notifiche Basate su Posizione**: Solo quando sei vicino a scuola
+- [x] **Suoni Personalizzati**: Assegna suoni unici per materia
+- [x] **Machine Learning**: Predizioni accurate dei pattern
 
 ### Pianificate:
 
-- [ ] **Condivisione Configurazioni**: Condividi setup con amici
+- [ ] **Aggiornamento Automatico PDF**: Download automatico da sito Vallauri
+- [ ] **Notifiche Cambio Docente**: Alert per sostituzioni
+- [ ] **Integrazione Registro Elettronico**: Sync voti e assenze
+- [ ] **Condivisione Configurazioni**: Condividi setup con compagni
 - [ ] **Template Preconfigurati**: Setup rapidi per diversi profili
-- [ ] **Integrazione Social**: Confronta statistiche con compagni
-- [ ] **API Aperta**: Integrazione con app terze
 - [ ] Sincronizzazione cloud con CloudKit
-- [ ] Import/export orario da file
 - [ ] Temi personalizzabili avanzati
 
 ## 📝 Log modifiche
 
-### v2.0 (Corrente) - Sistema Notifiche Avanzato:
+### v2.1 (Corrente) - Sistema Estrazione Orari:
+
+#### Nuove Funzionalità Principali:
+
+- ✅ **Sistema Estrazione PDF**: Script Python completo per parsing PDF Vallauri
+- ✅ **81 Classi Supportate**: Database completo con 2721+ lezioni
+- ✅ **Selezione Classe Onboarding**: Ricerca naturale con filtri intelligenti
+- ✅ **Gestione Celle Unite**: Supporto blocchi orari multipli (laboratori, progetti)
+- ✅ **Correzioni Manuali**: Sistema per fix specifici (5A INF verificata manualmente)
+- ✅ **Intervalli Gestiti**: Visualizzazione minimale e automatica delle pause
+- ✅ **Info Incomplete**: Indicatori visivi per lezioni con dati mancanti
+
+#### Miglioramenti Tecnici:
+
+- ✅ **ScheduleLoader Singleton**: Lazy loading ottimizzato del JSON (740KB)
+- ✅ **Parsing Formato Vallauri**: Gestione caratteri doppiati con regex
+- ✅ **Celle Unite Verticali**: Parsing frecce `\uea1e` per blocchi orari
+- ✅ **AllClassesSchedule Model**: Struttura completa per 81 classi
+- ✅ **ClassSelectionView**: UI moderna con search, filtri, loading states
+
+#### Riorganizzazione Progetto:
+
+- ✅ **Cartella scripts/**: Script Python, PDF sorgente, dipendenze, README
+- ✅ **Pulizia Completa**: Rimossi 9+ file temporanei e backup
+- ✅ **.gitignore Aggiornato**: Python cache, backup, file temporanei
+- ✅ **Documentazione Estesa**: README principale e scripts/README.md
+
+#### UI/UX Enhancements:
+
+- ✅ **Natural Language Search**: "5 inf", "prima informatica", ecc.
+- ✅ **Year Filters**: Bottoni 1-5 con bounce effects
+- ✅ **Loading States**: Shimmer e animazioni durante caricamento
+- ✅ **Empty States**: Messaggi chiari per nessun risultato
+- ✅ **Visual Indicators**: Badge, icone, colori per stati diversi
+- ✅ **Glassmorphism Consistency**: Design coerente in tutta l'app
+
+### v2.0 (Precedente) - Sistema Notifiche Avanzato:
 
 #### Nuove Funzionalità Principali:
 

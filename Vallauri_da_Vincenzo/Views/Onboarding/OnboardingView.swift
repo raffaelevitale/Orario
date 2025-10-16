@@ -9,6 +9,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @EnvironmentObject var dataManager: DataManager
     @State private var currentPage = 0
     @State private var showScheduleSetup = false
     @Environment(\.dismiss) var dismiss
@@ -119,6 +120,9 @@ struct OnboardingView: View {
                 completeOnboarding()
             })
         }
+        .onAppear {
+            dataManager.loadInitialData()
+        }
     }
     
     private func completeOnboarding() {
@@ -177,17 +181,12 @@ struct OnboardingPageView: View {
 
 struct ScheduleSetupView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @Environment(\.dismiss) var dismiss
     let onComplete: () -> Void
     
-    @State private var setupMethod: SetupMethod = .useDefault
-    @State private var showImportSheet = false
-    
-    enum SetupMethod {
-        case useDefault
-        case manual
-        case importFile
-    }
+    @State private var selectedClass: String = ""
+    @State private var showingClassSelection = false
     
     var body: some View {
         NavigationView {
@@ -206,41 +205,51 @@ struct ScheduleSetupView: View {
                             .font(.system(size: 60))
                             .foregroundColor(.blue)
                         
-                        Text("Configura il tuo Orario")
+                        Text("Seleziona la Tua Classe")
                             .font(.title)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
                         
-                        Text("Scegli come vuoi iniziare")
+                        Text("Caricheremo automaticamente il tuo orario")
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.7))
                     }
                     .padding(.top, 40)
                     
-                    // Setup options
-                    VStack(spacing: 15) {
-                        SetupOptionCard(
-                            icon: "checkmark.circle.fill",
-                            title: "Usa Orario Predefinito",
-                            description: "Inizia con un orario di esempio già configurato",
-                            isSelected: setupMethod == .useDefault,
-                            action: { setupMethod = .useDefault }
-                        )
-                        
-                        SetupOptionCard(
-                            icon: "pencil.circle.fill",
-                            title: "Inserimento Manuale",
-                            description: "Aggiungi le tue lezioni una per una",
-                            isSelected: setupMethod == .manual,
-                            action: { setupMethod = .manual }
-                        )
-                        
-                        SetupOptionCard(
-                            icon: "doc.circle.fill",
-                            title: "Importa da File",
-                            description: "Carica un file CSV o JSON",
-                            isSelected: setupMethod == .importFile,
-                            action: { setupMethod = .importFile }
+                    // Class selection button
+                    Button(action: {
+                        HapticManager.shared.selection()
+                        showingClassSelection = true
+                    }) {
+                        HStack(spacing: 15) {
+                            Image(systemName: selectedClass.isEmpty ? "person.crop.circle.badge.questionmark" : "person.crop.circle.badge.checkmark")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                                .frame(width: 40)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedClass.isEmpty ? "Seleziona Classe" : selectedClass)
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                Text(selectedClass.isEmpty ? "Tocca per scegliere la tua classe" : "Tocca per cambiare")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(Color.white.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15)
+                                        .stroke(selectedClass.isEmpty ? Color.clear : Color.blue, lineWidth: 2)
+                                )
                         )
                     }
                     .padding(.horizontal)
@@ -256,10 +265,11 @@ struct ScheduleSetupView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(selectedClass.isEmpty ? Color.gray : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(15)
                     }
+                    .disabled(selectedClass.isEmpty)
                     .padding(.horizontal)
                     .padding(.bottom, 30)
                 }
@@ -274,132 +284,24 @@ struct ScheduleSetupView: View {
                 }
             }
         }
-        .sheet(isPresented: $showImportSheet) {
-            ImportScheduleView()
+        .sheet(isPresented: $showingClassSelection) {
+            ClassSelectionView(selectedClass: $selectedClass)
+                .environmentObject(dataManager)
+                .environmentObject(settingsManager)
         }
     }
     
     private func handleContinue() {
+        guard !selectedClass.isEmpty else { return }
+        
         HapticManager.shared.impact(style: .medium)
         
-        switch setupMethod {
-        case .useDefault:
-            // L'orario predefinito è già caricato
-            onComplete()
-        case .manual:
-            // Naviga alla schermata di aggiunta manuale
-            onComplete()
-        case .importFile:
-            showImportSheet = true
-        }
-    }
-}
-
-struct SetupOptionCard: View {
-    let icon: String
-    let title: String
-    let description: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: {
-            HapticManager.shared.selection()
-            action()
-        }) {
-            HStack(spacing: 15) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundColor(isSelected ? .blue : .white.opacity(0.6))
-                    .frame(width: 40)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    Text(description)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.blue)
-                        .font(.title3)
-                }
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(isSelected ? Color.blue.opacity(0.2) : Color.white.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 15)
-                            .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Import Schedule View
-
-struct ImportScheduleView: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var showDocumentPicker = false
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    Image(systemName: "doc.badge.arrow.up")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
-                    
-                    Text("Importa Orario")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    
-                    Text("Formati supportati: CSV, JSON")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Formato CSV richiesto:")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Text("materia,docente,aula,giorno,inizio,fine,colore")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.blue)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                    .padding()
-                    
-                    Button("Seleziona File") {
-                        showDocumentPicker = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding()
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Chiudi") {
-                        dismiss()
-                    }
-                }
-            }
-        }
+        // Salva la classe selezionata e carica l'orario
+        settingsManager.selectedClass = selectedClass
+        dataManager.selectedClass = selectedClass
+        dataManager.loadLessonsForClass(selectedClass)
+        
+        onComplete()
     }
 }
 
