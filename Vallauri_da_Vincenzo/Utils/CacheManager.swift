@@ -10,14 +10,16 @@ import UIKit
 
 class CacheManager {
     static let shared = CacheManager()
-    
+
     // MARK: - Cache Storage
-    
-    private var lessonsCache: [Int: CachedLessons] = [:]
-    private var gradesCache: [String: CachedGrades] = [:]
-    private var statisticsCache: CachedStatistics?
-    
-    private let cacheQueue = DispatchQueue(label: "com.vallauri.cache", qos: .utility)
+
+    // Thread-safe cache storage using concurrent queue with barrier
+    private var _lessonsCache: [Int: CachedLessons] = [:]
+    private var _gradesCache: [String: CachedGrades] = [:]
+    private var _statisticsCache: CachedStatistics?
+
+    // Concurrent queue allows multiple reads simultaneously, barriers for writes
+    private let cacheQueue = DispatchQueue(label: "com.vallauri.cache", qos: .utility, attributes: .concurrent)
     private let cacheExpirationTime: TimeInterval = 3600 // 1 ora
     
     // MARK: - Cached Data Structures
@@ -54,102 +56,112 @@ class CacheManager {
     }
     
     // MARK: - Lessons Cache
-    
+
     func cacheLessons(_ lessons: [Lesson], forDay day: Int) {
-        cacheQueue.async { [weak self] in
-            self?.lessonsCache[day] = CachedLessons(
+        // Use barrier flag for write operations to ensure thread-safety
+        cacheQueue.async(flags: .barrier) {
+            self._lessonsCache[day] = CachedLessons(
                 lessons: lessons,
                 timestamp: Date()
             )
         }
     }
-    
+
     func getCachedLessons(forDay day: Int) -> [Lesson]? {
-        guard let cached = lessonsCache[day], !cached.isExpired else {
-            return nil
+        // Synchronous read from concurrent queue (thread-safe)
+        return cacheQueue.sync {
+            guard let cached = self._lessonsCache[day], !cached.isExpired else {
+                return nil
+            }
+            return cached.lessons
         }
-        return cached.lessons
     }
     
     // MARK: - Grades Cache
-    
+
     func cacheGrades(_ grades: [Grade], forSubject subject: String) {
-        cacheQueue.async { [weak self] in
-            self?.gradesCache[subject] = CachedGrades(
+        // Use barrier flag for write operations to ensure thread-safety
+        cacheQueue.async(flags: .barrier) {
+            self._gradesCache[subject] = CachedGrades(
                 grades: grades,
                 timestamp: Date()
             )
         }
     }
-    
+
     func getCachedGrades(forSubject subject: String) -> [Grade]? {
-        guard let cached = gradesCache[subject], !cached.isExpired else {
-            return nil
+        // Synchronous read from concurrent queue (thread-safe)
+        return cacheQueue.sync {
+            guard let cached = self._gradesCache[subject], !cached.isExpired else {
+                return nil
+            }
+            return cached.grades
         }
-        return cached.grades
     }
     
     // MARK: - Statistics Cache
-    
+
     func cacheStatistics(_ statistics: GradeStatistics) {
-        cacheQueue.async { [weak self] in
-            self?.statisticsCache = CachedStatistics(
+        // Use barrier flag for write operations to ensure thread-safety
+        cacheQueue.async(flags: .barrier) {
+            self._statisticsCache = CachedStatistics(
                 statistics: statistics,
                 timestamp: Date()
             )
         }
     }
-    
+
     func getCachedStatistics() -> GradeStatistics? {
-        guard let cached = statisticsCache, !cached.isExpired else {
-            return nil
+        // Synchronous read from concurrent queue (thread-safe)
+        return cacheQueue.sync {
+            guard let cached = self._statisticsCache, !cached.isExpired else {
+                return nil
+            }
+            return cached.statistics
         }
-        return cached.statistics
     }
     
     // MARK: - Cache Management
-    
+
     func clearAllCaches() {
-        cacheQueue.async { [weak self] in
-            self?.lessonsCache.removeAll()
-            self?.gradesCache.removeAll()
-            self?.statisticsCache = nil
+        cacheQueue.async(flags: .barrier) {
+            self._lessonsCache.removeAll()
+            self._gradesCache.removeAll()
+            self._statisticsCache = nil
             print("🗑️ Cache completamente svuotata")
         }
     }
-    
+
     func clearLessonsCache() {
-        cacheQueue.async { [weak self] in
-            self?.lessonsCache.removeAll()
+        cacheQueue.async(flags: .barrier) {
+            self._lessonsCache.removeAll()
             print("🗑️ Cache lezioni svuotata")
         }
     }
-    
+
     func clearGradesCache() {
-        cacheQueue.async { [weak self] in
-            self?.gradesCache.removeAll()
-            self?.statisticsCache = nil
+        cacheQueue.async(flags: .barrier) {
+            self._gradesCache.removeAll()
+            self._statisticsCache = nil
             print("🗑️ Cache voti svuotata")
         }
     }
     
     func clearExpiredCaches() {
-        cacheQueue.async { [weak self] in
-            guard let self = self else { return }
-            
+        cacheQueue.async(flags: .barrier) {
             // Rimuovi lessons cache scadute
-            let expiredLessonDays = self.lessonsCache.filter { $0.value.isExpired }.map { $0.key }
-            expiredLessonDays.forEach { self.lessonsCache.removeValue(forKey: $0) }
-            
+            let expiredLessonDays = self._lessonsCache.filter { $0.value.isExpired }.map { $0.key }
+            expiredLessonDays.forEach { self._lessonsCache.removeValue(forKey: $0) }
+
             // Rimuovi grades cache scadute
-            let expiredSubjects = self.gradesCache.filter { $0.value.isExpired }.map { $0.key }
-            expiredSubjects.forEach { self.gradesCache.removeValue(forKey: $0) }
-            
+            let expiredSubjects = self._gradesCache.filter { $0.value.isExpired }.map { $0.key }
+            expiredSubjects.forEach { self._gradesCache.removeValue(forKey: $0) }
+
             // Rimuovi statistics cache se scaduta
-            if let stats = self.statisticsCache, stats.isExpired {
-                self.statisticsCache = nil
+            if let stats = self._statisticsCache, stats.isExpired {
+                self._statisticsCache = nil
             }
-            
+
             let totalRemoved = expiredLessonDays.count + expiredSubjects.count
             if totalRemoved > 0 {
                 print("🗑️ Rimosse \(totalRemoved) cache scadute")
@@ -158,13 +170,15 @@ class CacheManager {
     }
     
     // MARK: - Cache Info
-    
+
     func getCacheInfo() -> CacheInfo {
-        CacheInfo(
-            lessonsCacheCount: lessonsCache.count,
-            gradesCacheCount: gradesCache.count,
-            hasStatisticsCache: statisticsCache != nil
-        )
+        return cacheQueue.sync {
+            CacheInfo(
+                lessonsCacheCount: self._lessonsCache.count,
+                gradesCacheCount: self._gradesCache.count,
+                hasStatisticsCache: self._statisticsCache != nil
+            )
+        }
     }
     
     struct CacheInfo {

@@ -84,24 +84,31 @@ class HomeViewModel: ObservableObject {
     }
     
     var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, d MMMM yyyy"
-        formatter.locale = Locale(identifier: "it_IT")
-        return formatter.string(from: currentTime).capitalized
+        return DateFormatter.italianDateFormatter.string(from: currentTime).capitalized
     }
     
     var nextSchoolDay: Date? {
         let calendar = Calendar.current
         var nextDay = calendar.date(byAdding: .day, value: 1, to: currentTime) ?? currentTime
-        
+        var attempts = 0
+        let maxAttempts = 14 // Max 2 settimane di ricerca
+
         // Trova il prossimo giorno di scuola (Lunedì-Venerdì)
-        while true {
+        while attempts < maxAttempts {
             let weekday = calendar.component(.weekday, from: nextDay)
             if weekday >= 2 && weekday <= 6 {
                 return nextDay
             }
-            nextDay = calendar.date(byAdding: .day, value: 1, to: nextDay) ?? nextDay
+            // Usa guard per gestire il caso di fallimento della date operation
+            guard let next = calendar.date(byAdding: .day, value: 1, to: nextDay) else {
+                return nil
+            }
+            nextDay = next
+            attempts += 1
         }
+
+        // Se dopo 14 giorni non troviamo un giorno di scuola, ritorna nil
+        return nil
     }
     
     // MARK: - Private Methods
