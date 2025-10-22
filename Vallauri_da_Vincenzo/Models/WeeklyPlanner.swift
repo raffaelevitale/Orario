@@ -115,20 +115,16 @@ struct PlannerTask: Identifiable, Codable {
     }
     
     var dueDateFormatted: String {
-        let formatter = DateFormatter()
         let calendar = Calendar.current
-        
+
         if calendar.isDateInToday(dueDate) {
             return "Oggi"
         } else if calendar.isDateInTomorrow(dueDate) {
             return "Domani"
         } else if calendar.isDate(dueDate, equalTo: Date(), toGranularity: .weekOfYear) {
-            formatter.locale = Locale(identifier: "it_IT")
-            formatter.dateFormat = "EEEE"
-            return formatter.string(from: dueDate)
+            return DateFormatter.weekdayFormatter.string(from: dueDate)
         } else {
-            formatter.dateFormat = "dd/MM"
-            return formatter.string(from: dueDate)
+            return DateFormatter.numericDateFormatter.string(from: dueDate)
         }
     }
 }
@@ -314,8 +310,6 @@ class WeeklyPlannerManager: ObservableObject {
             return "Settimana"
         }
         
-        let formatter = DateFormatter()
-        
         if selectedWeekOffset == 0 {
             return "Questa settimana"
         } else if selectedWeekOffset == 1 {
@@ -323,9 +317,8 @@ class WeeklyPlannerManager: ObservableObject {
         } else if selectedWeekOffset == -1 {
             return "Settimana scorsa"
         } else {
-            formatter.dateFormat = "dd MMM"
-            let startString = formatter.string(from: targetWeekStart)
-            let endString = formatter.string(from: targetWeekEnd)
+            let startString = DateFormatter.shortDateMonthFormatter.string(from: targetWeekStart)
+            let endString = DateFormatter.shortDateMonthFormatter.string(from: targetWeekEnd)
             return "\(startString) - \(endString)"
         }
     }

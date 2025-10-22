@@ -355,15 +355,11 @@ struct WeekDayCardView: View {
     let onTaskTap: (PlannerTask) -> Void
     
     private var dayFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE"
-        return formatter
+        return DateFormatter.weekdayFormatter
     }
-    
+
     private var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd"
-        return formatter
+        return DateFormatter.numericDateFormatter
     }
     
     private var isToday: Bool {

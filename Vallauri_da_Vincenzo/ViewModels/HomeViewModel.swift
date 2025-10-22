@@ -84,10 +84,7 @@ class HomeViewModel: ObservableObject {
     }
     
     var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, d MMMM yyyy"
-        formatter.locale = Locale(identifier: "it_IT")
-        return formatter.string(from: currentTime).capitalized
+        return DateFormatter.italianDateFormatter.string(from: currentTime).capitalized
     }
     
     var nextSchoolDay: Date? {

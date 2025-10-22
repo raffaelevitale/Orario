@@ -14,7 +14,8 @@ struct HomeView: View {
     @State private var isGreetingVisible = true
     @Binding var selectedTab: Int
     
-    private let timer = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
+    @State private var timerPublisher = Timer.publish(every: 15, on: .main, in: .common)
+    @State private var timerCancellable: AnyCancellable?
     
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: currentTime)
@@ -31,10 +32,7 @@ struct HomeView: View {
     }
     
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, d MMMM yyyy"
-        formatter.locale = Locale(identifier: "it_IT")
-        return formatter.string(from: currentTime).capitalized
+        return DateFormatter.italianDateFormatter.string(from: currentTime).capitalized
     }
     
     private var isSchoolTime: Bool {
@@ -74,10 +72,13 @@ struct HomeView: View {
                 .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 30) {
+                    VStack(spacing: 22) {
                         // Header con saluto e data
                         headerView
                         
+                        // Oggi a colpo d'occhio (utile)
+                        todayAtGlance
+
                         // Sezione lezione attuale/prossima
                         if isSchoolTime {
                             currentLessonView
@@ -101,6 +102,7 @@ struct HomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(.dark)
+            // Toolbar con ricerca in stile standard
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SearchView()) {
@@ -110,12 +112,16 @@ struct HomeView: View {
                     }
                 }
             }
-            .onReceive(timer) { _ in
+            .onReceive(timerPublisher) { _ in
                 currentTime = Date()
                 // Forza aggiornamento del DataManager per aggiornare la UI
                 dataManager.objectWillChange.send()
             }
             .onAppear {
+                // Avvia il timer publisher e conserva il cancellable per evitare leak
+                if timerCancellable == nil {
+                    timerCancellable = timerPublisher.connect()
+                }
                 // Animazione del saluto
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                     withAnimation(.easeInOut(duration: 1)) {
@@ -123,30 +129,121 @@ struct HomeView: View {
                     }
                 }
             }
+            .onDisappear {
+                // Cancella il timer per evitare memory leak
+                timerCancellable?.cancel()
+                timerCancellable = nil
+            }
         }
     }
     
+    // MARK: - Today at a Glance
+    var todayAtGlance: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "scope")
+                    .foregroundColor(.blue)
+                Text("Oggi a colpo d'occhio")
+                    .font(.headline).bold()
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            HStack(spacing: 16) {
+                // Ring avanzamento o countdown
+                ProgressRingView(progress: currentLessonProgress, size: 64, color: .green)
+                    .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
+                    .frame(width: 72, height: 72)
+                VStack(alignment: .leading, spacing: 6) {
+                    if let lesson = currentLesson {
+                        Text(lesson.subject)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text("Fino alle \(lesson.endTime) • \(remainingTimeText)")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                    } else if let next = nextLesson {
+                        Text("Prossima: \(next.subject)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text("Inizia alle \(next.startTime) • tra \(timeUntilNextLessonText)")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                    } else {
+                        Text("Nessuna lezione oggi")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        Text("Goditi la giornata ✨")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                Spacer()
+            }
+            .padding()
+            .glassmorphism(tintColor: settingsManager.backgroundColor.colors.first ?? .blue)
+        }
+    }
+
+    private var currentLessonProgress: Double {
+        guard let lesson = currentLesson else { return 0 }
+        let calendar = Calendar.current
+        guard let start = DateFormatter.timeFormatter.date(from: lesson.startTime),
+              let end = DateFormatter.timeFormatter.date(from: lesson.endTime) else { return 0 }
+        // Porta l'ora a oggi
+        let startToday = calendar.date(bySettingHour: calendar.component(.hour, from: start), minute: calendar.component(.minute, from: start), second: 0, of: currentTime) ?? currentTime
+        let endToday = calendar.date(bySettingHour: calendar.component(.hour, from: end), minute: calendar.component(.minute, from: end), second: 0, of: currentTime) ?? currentTime
+        let total = endToday.timeIntervalSince(startToday)
+        let elapsed = currentTime.timeIntervalSince(startToday)
+        return max(0, min(1, elapsed / max(1, total)))
+    }
+
+    private var remainingTimeText: String {
+        guard let lesson = currentLesson else { return "" }
+        let calendar = Calendar.current
+        guard let end = DateFormatter.timeFormatter.date(from: lesson.endTime) else { return "" }
+        let endToday = calendar.date(bySettingHour: calendar.component(.hour, from: end), minute: calendar.component(.minute, from: end), second: 0, of: currentTime) ?? currentTime
+        let minutes = max(0, Int(endToday.timeIntervalSince(currentTime) / 60))
+        return "\(minutes)m rimasti"
+    }
+
+    private var timeUntilNextLessonText: String {
+        guard let lesson = nextLesson else { return "" }
+        let calendar = Calendar.current
+        guard let start = DateFormatter.timeFormatter.date(from: lesson.startTime) else { return "" }
+        let startToday = calendar.date(bySettingHour: calendar.component(.hour, from: start), minute: calendar.component(.minute, from: start), second: 0, of: currentTime) ?? currentTime
+        let minutes = max(0, Int(startToday.timeIntervalSince(currentTime) / 60))
+        return "\(minutes)m"
+    }
+
     // MARK: - Header View
     var headerView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 10) {
             if isGreetingVisible {
-                Text(greeting)
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .transition(.opacity.combined(with: .scale))
+                HStack(alignment: .firstTextBaseline) {
+                    Text(greeting)
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundColor(.white)
+                        .transition(.opacity.combined(with: .scale))
+                    Spacer()
+                }
             } else {
-                Text(formattedDate)
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .transition(.opacity.combined(with: .scale))
+                HStack {
+                    Text(formattedDate)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white.opacity(0.9))
+                        .transition(.opacity.combined(with: .scale))
+                    Spacer()
+                }
             }
         }
-        .frame(height: 80)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 1), value: isGreetingVisible)
     }
+
+    // (Rimosse quick actions su richiesta)
     
     // MARK: - Current Lesson View
     var currentLessonView: some View {
@@ -412,10 +509,7 @@ struct HomeView: View {
                     return "Lunedì"
                 } else {
                     let tomorrow = calendar.date(byAdding: .day, value: 1, to: currentTime)!
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "EEEE"
-                    formatter.locale = Locale(identifier: "it_IT")
-                    return formatter.string(from: tomorrow).capitalized
+                    return DateFormatter.weekdayFormatter.string(from: tomorrow).capitalized
                 }
             } else {
                 return "Oggi"
@@ -431,9 +525,7 @@ struct TaskRowView: View {
     let task: PlannerTask
     
     private var dueDateText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM"
-        return formatter.string(from: task.dueDate)
+        return DateFormatter.numericDateFormatter.string(from: task.dueDate)
     }
     
     private var isOverdue: Bool {
