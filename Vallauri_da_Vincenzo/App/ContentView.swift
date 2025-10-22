@@ -146,6 +146,7 @@ struct ContentView: View {
             appearance.compactInlineLayoutAppearance = itemAppearance
         }
 
+        // Manteniamo l'aspetto per la TabView interna (anche se nascosta)
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
     }
