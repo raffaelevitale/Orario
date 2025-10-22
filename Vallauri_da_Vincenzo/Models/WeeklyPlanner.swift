@@ -132,11 +132,19 @@ struct PlannerTask: Identifiable, Codable {
 // MARK: - Weekly Planner Manager
 
 class WeeklyPlannerManager: ObservableObject {
-    @Published var tasks: [PlannerTask] = []
+    @Published var tasks: [PlannerTask] = [] {
+        didSet {
+            // Invalida la cache quando i task cambiano
+            tasksByDayCache.removeAll()
+        }
+    }
     @Published var selectedWeekOffset: Int = 0 // 0 = current week, 1 = next week, etc.
-    
+
     private let tasksKey = "WeeklyPlannerTasks"
-    
+
+    // Cache per evitare N+1 query problem
+    private var tasksByDayCache: [String: [PlannerTask]] = [:]
+
     init() {
         loadTasks()
     }
@@ -210,7 +218,15 @@ class WeeklyPlannerManager: ObservableObject {
     
     func getTasksForDay(_ date: Date) -> [PlannerTask] {
         let calendar = Calendar.current
-        return tasks.filter { task in
+        let dayKey = calendar.startOfDay(for: date).timeIntervalSince1970.description
+
+        // Usa la cache se disponibile
+        if let cachedTasks = tasksByDayCache[dayKey] {
+            return cachedTasks
+        }
+
+        // Calcola e salva in cache
+        let filteredTasks = tasks.filter { task in
             calendar.isDate(task.dueDate, inSameDayAs: date)
         }.sorted { task1, task2 in
             if task1.isCompleted != task2.isCompleted {
@@ -221,6 +237,9 @@ class WeeklyPlannerManager: ObservableObject {
             }
             return task1.dueDate < task2.dueDate
         }
+
+        tasksByDayCache[dayKey] = filteredTasks
+        return filteredTasks
     }
     
     func getAllTasks() -> [PlannerTask] {
