@@ -120,7 +120,7 @@ struct HomeView: View {
             .onAppear {
                 // Avvia il timer publisher e conserva il cancellable per evitare leak
                 if timerCancellable == nil {
-                    timerCancellable = timerPublisher.connect()
+                    timerCancellable = AnyCancellable(timerPublisher.connect())
                 }
                 // Animazione del saluto
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {

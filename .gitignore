@@ -114,3 +114,4 @@ ENV/
 # Extracted data (regenerate from scripts)
 scripts/orari_tutte_classi.json
 orari_classi/
+CODE_ANALYSIS_REPORT.md

@@ -4,6 +4,16 @@ App iOS completa con widget, notifiche intelligenti e sistema di gestione orari 
 
 ## ✨ Novità v2.1
 
+### 🧭 Navigazione e Home [NUOVO]
+
+- Barra di navigazione inferiore in stile **Liquid Glass** sempre visibile
+  - Effetto blur + riflessi, icone-only con selezione morbida
+  - Pulsante di ricerca rotondo flottante in basso a destra
+- Home ridisegnata con sezione **“Oggi a colpo d’occhio”**
+  - Anello di avanzamento lezione corrente o countdown alla prossima
+  - Azioni rapide per saltare a Orario, Planner, Voti, Impostazioni
+  - Sezioni utili: prossimi eventi del planner e riepilogo voti
+
 ### 🎯 Sistema di Estrazione Orari da PDF
 
 - ✅ **Estrazione Automatica**: Script Python per estrarre orari da PDF ufficiale

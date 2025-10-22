@@ -262,3 +262,68 @@ struct ModernSectionHeader: View {
         .padding(.vertical, 8)
     }
 }
+
+// MARK: - Progress Ring (per avanzamento lezione)
+struct ProgressRingView: View {
+    let progress: Double // 0...1
+    let size: CGFloat
+    let color: Color
+    let showPercent: Bool
+    
+    init(progress: Double, size: CGFloat = 64, color: Color = .blue, showPercent: Bool = true) {
+        self.progress = progress
+        self.size = size
+        self.color = color
+        self.showPercent = showPercent
+    }
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.15), lineWidth: 8)
+            Circle()
+                .trim(from: 0, to: max(0.0, min(1.0, progress)))
+                .stroke(
+                    AngularGradient(gradient: Gradient(colors: [color, color.opacity(0.5), color]), center: .center),
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+            if showPercent {
+                Text("\(Int(progress * 100))%")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Quick Action Button (pill)
+struct QuickActionButton: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(0.08))
+            .overlay(
+                Capsule().stroke(color.opacity(0.35), lineWidth: 1)
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(BounceButtonStyle())
+    }
+}
