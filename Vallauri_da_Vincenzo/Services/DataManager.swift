@@ -424,8 +424,25 @@ class DataManager: ObservableObject {
         let components = time.components(separatedBy: ":")
         guard components.count == 2,
               let hours = Int(components[0]),
-              let minutes = Int(components[1]) else { return nil }
+              let minutes = Int(components[1]) else {
+            // Log error for debugging but return nil for backward compatibility
+            print("⚠️ Formato orario non valido: \(time)")
+            return nil
+        }
         return hours * 60 + minutes
+    }
+
+    /// Versione con error handling esplicito per future API
+    private func timeToMinutesStrict(_ time: String) -> Result<Int, AppError> {
+        let components = time.components(separatedBy: ":")
+        guard components.count == 2,
+              let hours = Int(components[0]),
+              let minutes = Int(components[1]),
+              hours >= 0 && hours < 24,
+              minutes >= 0 && minutes < 60 else {
+            return .failure(.invalidTimeFormat(time))
+        }
+        return .success(hours * 60 + minutes)
     }
     
     // MARK: - Widget Management
