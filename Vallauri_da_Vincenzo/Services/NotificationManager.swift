@@ -1,10 +1,97 @@
 import Foundation
 import UserNotifications
 
+// MARK: - Notification Configuration
+
+/// Configurazione riutilizzabile per le notifiche
+struct NotificationConfig {
+    let identifier: String
+    let title: String
+    let body: String
+    let sound: UNNotificationSound
+    let categoryIdentifier: String?
+    let interruptionLevel: UNNotificationInterruptionLevel
+    let badge: NSNumber?
+
+    /// Configurazione di default per notifiche standard
+    static func standard(id: String, title: String, body: String) -> NotificationConfig {
+        NotificationConfig(
+            identifier: id,
+            title: title,
+            body: body,
+            sound: .default,
+            categoryIdentifier: nil,
+            interruptionLevel: .active,
+            badge: nil
+        )
+    }
+
+    /// Configurazione per notifiche time-sensitive
+    static func timeSensitive(id: String, title: String, body: String) -> NotificationConfig {
+        NotificationConfig(
+            identifier: id,
+            title: title,
+            body: body,
+            sound: .defaultCritical,
+            categoryIdentifier: "LESSON_CATEGORY",
+            interruptionLevel: .timeSensitive,
+            badge: 1
+        )
+    }
+}
+
 class NotificationManager {
     static let shared = NotificationManager()
-    
+
     private init() {}
+
+    // MARK: - Helper Methods
+
+    /// Crea contenuto notifica da configurazione
+    private func createNotificationContent(from config: NotificationConfig) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = config.title
+        content.body = config.body
+        content.sound = config.sound
+
+        if let category = config.categoryIdentifier {
+            content.categoryIdentifier = category
+        }
+
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = config.interruptionLevel
+        }
+
+        if let badge = config.badge {
+            content.badge = badge
+        }
+
+        return content
+    }
+
+    /// Schedule a notification with given config and trigger
+    private func scheduleNotification(
+        config: NotificationConfig,
+        trigger: UNNotificationTrigger,
+        completion: ((Result<Void, AppError>) -> Void)? = nil
+    ) {
+        let content = createNotificationContent(from: config)
+        let request = UNNotificationRequest(
+            identifier: config.identifier,
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Errore scheduling notifica \(config.identifier): \(error)")
+                completion?(.failure(.notificationSchedulingFailed(error)))
+            } else {
+                print("✅ Notifica programmata: \(config.identifier)")
+                completion?(.success(()))
+            }
+        }
+    }
     
     // MARK: - Configurazioni Avanzate
     
