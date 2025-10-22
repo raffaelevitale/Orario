@@ -364,39 +364,50 @@ class DataManager: ObservableObject {
     }
     
     func updateLiveActivity() {
-        // Aggiorna tutte le Live Activities attive
+        // Ottimizzazione: crea lookup dictionary O(n) invece di nested loop O(n×m)
+        let todayLessons = getTodaysLessons().filter { $0.subject != "Intervallo" }
+        let calendar = Calendar.current
+        let now = Date()
+        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+
+        // Crea dictionary per lookup O(1) invece di loop interno O(n)
+        var currentLessonsBySubject: [String: Lesson] = [:]
+
+        for lesson in todayLessons {
+            guard let startMinutes = timeToMinutes(lesson.startTime),
+                  let endMinutes = timeToMinutes(lesson.endTime),
+                  currentMinutes >= startMinutes && currentMinutes < endMinutes else {
+                continue
+            }
+            currentLessonsBySubject[lesson.subject] = lesson
+        }
+
+        // Aggiorna solo le activities con lezioni corrispondenti - O(m) invece di O(n×m)
         for activity in Activity<ScheduleWidgetAttributes>.activities {
-            let todayLessons = getTodaysLessons().filter { $0.subject != "Intervallo" }
-            let calendar = Calendar.current
-            let now = Date()
-            let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
-            
-            for lesson in todayLessons {
-                if lesson.subject == activity.attributes.lessonTitle,
-                   let startMinutes = timeToMinutes(lesson.startTime),
-                   let endMinutes = timeToMinutes(lesson.endTime),
-                   currentMinutes >= startMinutes && currentMinutes < endMinutes {
-                    
-                    let totalDuration = endMinutes - startMinutes
-                    let elapsed = currentMinutes - startMinutes
-                    let remaining = endMinutes - currentMinutes
-                    let progress = Double(elapsed) / Double(totalDuration)
-                    
-                    let contentState = ScheduleWidgetAttributes.ContentState(
-                        currentLesson: lesson.subject,
-                        teacher: lesson.teacher,
-                        classroom: lesson.classroom,
-                        startTime: lesson.startTime,
-                        endTime: lesson.endTime,
-                        progress: progress,
-                        remainingMinutes: remaining,
-                        color: lesson.color
-                    )
-                    
-                    Task {
-                        await activity.update(.init(state: contentState, staleDate: nil))
-                    }
-                }
+            guard let lesson = currentLessonsBySubject[activity.attributes.lessonTitle],
+                  let startMinutes = timeToMinutes(lesson.startTime),
+                  let endMinutes = timeToMinutes(lesson.endTime) else {
+                continue
+            }
+
+            let totalDuration = endMinutes - startMinutes
+            let elapsed = currentMinutes - startMinutes
+            let remaining = endMinutes - currentMinutes
+            let progress = Double(elapsed) / Double(totalDuration)
+
+            let contentState = ScheduleWidgetAttributes.ContentState(
+                currentLesson: lesson.subject,
+                teacher: lesson.teacher,
+                classroom: lesson.classroom,
+                startTime: lesson.startTime,
+                endTime: lesson.endTime,
+                progress: progress,
+                remainingMinutes: remaining,
+                color: lesson.color
+            )
+
+            Task {
+                await activity.update(.init(state: contentState, staleDate: nil))
             }
         }
     }
