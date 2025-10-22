@@ -236,7 +236,8 @@ class DataManager: ObservableObject {
     
     private func scheduleNotificationsIfNeeded() {
         // Verifica se i permessi sono stati concessi e se le notifiche sono abilitate
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            guard let self = self else { return }
             if settings.authorizationStatus == .authorized && SettingsManager.shared.enableNotifications {
                 DispatchQueue.main.async {
                     print("🔔 Programmazione notifiche basata sulle impostazioni utente...")
